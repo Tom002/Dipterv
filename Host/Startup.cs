@@ -19,6 +19,16 @@ using Stl.Fusion.Server.Authentication;
 using Stl.Fusion.Blazor;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Templates.TodoApp.UI;
+using Dipterv.Shared.Interfaces;
+using Dipterv.Bll.Services;
+using Dipterv.Shared.Interfaces.ComputeServices;
+using Dipterv.Dal.Model;
+using Microsoft.AspNetCore.Identity;
+using Dipterv.Dal.DbContext;
+using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
+using Stl.Fusion.EntityFramework.Authentication;
+using Dipterv.Bll.Mappings;
 
 namespace Templates.TodoApp.Host;
 
@@ -41,6 +51,10 @@ public class Startup
         HostSettings = services.BuildServiceProvider().GetRequiredService<HostSettings>();
 #pragma warning restore ASP0000
 
+
+
+
+
         // Fusion services
         services.AddSingleton(new Publisher.Options() { Id = HostSettings.PublisherId });
         var fusion = services.AddFusion();
@@ -59,6 +73,51 @@ public class Startup
             {
                 NameClaimKeys = Array.Empty<string>(),
             });
+
+        fusion.AddComputeService<IProductService, ProductService>();
+        fusion.AddComputeService<IProductReviewService, ProductReviewService>();
+        fusion.AddComputeService<IProductInventoryService, ProductInventoryService>();
+        fusion.AddComputeService<IDateService, DateService>();
+        fusion.AddComputeService<ISpecialOfferService, SpecialOfferService>();
+        fusion.AddComputeService<ICustomerService, CustomerService>();
+        fusion.AddComputeService<IOrderService, OrderService>();
+
+        services.AddScoped<IAccountService, AccountService>();
+
+        services.AddIdentity<ApplicationUser, IdentityRole<long>>(options =>
+        {
+            options.User.RequireUniqueEmail = true;
+
+            options.Password.RequireDigit = false;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+        })
+        .AddEntityFrameworkStores<FusionDbContext>()
+        .AddDefaultTokenProviders();
+
+        services.AddDbContextFactory<FusionDbContext>(dbContext => {
+            dbContext.EnableSensitiveDataLogging();
+        });
+
+        services.AddScoped<FusionDbContext>(p => p.GetRequiredService<IDbContextFactory<FusionDbContext>>().CreateDbContext());
+
+        services.AddDbContextServices<FusionDbContext>(dbContext =>
+        {
+            dbContext.AddEntityResolver<int, Product>();
+            dbContext.AddEntityResolver<int, ProductInventory>();
+            dbContext.AddEntityResolver<int, ProductReview>();
+            dbContext.AddEntityResolver<int, Location>();
+            dbContext.AddEntityResolver<int, WorkOrder>();
+            dbContext.AddEntityResolver<int, SpecialOffer>();
+
+            dbContext.AddOperations((_, o) => {
+                o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(1);
+            });
+
+            dbContext.AddAuthentication<DbSessionInfo<long>, DbUser<long>, long>();
+        });
+
+        services.AddAutoMapper(typeof(MappingProfile));
 
 
         // Shared services
