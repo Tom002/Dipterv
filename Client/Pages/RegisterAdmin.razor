@@ -1,0 +1,21 @@
+﻿@page "/registerAdmin"
+@using Dipterv.Shared.Dto.SignIn
+@inject IAccountService AccountService;
+
+<h3>RegisterAdmin</h3>
+
+<TextEdit @bind-Text="@Email" Role="TextRole.Email" />
+<TextEdit @bind-Text="@Password" Role="TextRole.Password" />
+<Button Color="Color.Secondary" Clicked="Register">Register</Button>
+
+@code {
+
+    public string Email { get; set; }
+    public string Password { get; set; }
+
+    public async Task Register()
+    {
+        await AccountService.RegisterAdmin(emailPasswordDto: new EmailPasswordDto { Email = Email, Password = Password }, CancellationToken.None);
+    }
+
+}

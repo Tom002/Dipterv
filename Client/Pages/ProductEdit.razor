@@ -1,0 +1,56 @@
+﻿@page "/product/{Id:int}/edit"
+@inject IProductService ProductService
+
+
+<h3>Edit product</h3>
+
+<Field>
+    <FieldLabel>Product name</FieldLabel>
+    <TextEdit @bind-Text="Product.Name" />
+</Field>
+<Field>
+    <FieldLabel>List Price</FieldLabel>
+    <NumericEdit @bind-Value="Product.ListPrice" />
+</Field>
+<Field>
+    <FieldLabel>Standard cost</FieldLabel>
+    <NumericEdit  @bind-Value="Product.StandardCost" />
+</Field>
+<Field>
+    <FieldLabel>Size</FieldLabel>
+    <TextEdit @bind-Text="Product.Size" />
+</Field>
+<Field>
+    <FieldLabel>ProductNumber</FieldLabel>
+    <TextEdit @bind-Text="Product.ProductNumber" />
+</Field>
+<Field>
+    <Button Color="Color.Primary" Clicked="@EditProduct">Edit product</Button>
+</Field>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    public ProductDto Product { get; set; } = new ProductDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Product = await ProductService.TryGet(Id, CancellationToken.None);
+        base.OnInitialized();
+    }
+
+    public async Task EditProduct()
+    {
+        await ProductService.Edit(
+            new UpdateProductCommand
+            {
+                ProductId = Id,
+                Name = Product.Name,
+                ListPrice = Product.ListPrice,
+                ProductNumber = Product.ProductNumber,
+                Size = Product.Size,
+                StandardCost = Product.StandardCost
+            });
+    }
+}

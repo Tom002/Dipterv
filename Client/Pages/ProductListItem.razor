@@ -1,0 +1,28 @@
+﻿<Heading Size="HeadingSize.Is5" Margin="Margin.Is1.FromBottom">@Product.Name</Heading>
+<Paragraph Margin="Margin.Is1.FromBottom">List price: @Product.ListPrice USD </Paragraph>
+<Paragraph Margin="Margin.Is1.FromBottom">Standard cost: @Product.StandardCost USD </Paragraph>
+<Paragraph Margin="Margin.Is1.FromBottom">Size: @Product.Size </Paragraph>
+<Small>@Product.ProductNumber</Small>
+
+<Div>
+    <Button Color="Color.Primary" Type="ButtonType.Link" To="@ViewLink">View</Button>
+    <Button Color="Color.Secondary" Type="ButtonType.Link" To="@EditLink" Target="Target.Blank">Edit</Button>
+</Div>
+
+@code {
+
+    [Parameter]
+    public EventCallback<int> OnDeleteCallback { get; set; }
+
+    [Parameter]
+    public ProductDto Product { get; set; }
+
+    public string ViewLink { get => $"product/{Product.ProductId}"; }
+
+    public string EditLink { get => $"product/{Product.ProductId}/edit"; }
+
+    public async Task OnDelete()
+    {
+        await OnDeleteCallback.InvokeAsync(Product.ProductId);
+    }
+}

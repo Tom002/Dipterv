@@ -1,0 +1,58 @@
+﻿@page "/products"
+@inherits MixedStateComponent<List<ProductDto>, ProductListLocalModel>
+@inject IProductService ProductService
+
+@{
+    var state = State.LatestNonErrorValue;
+    var error = State.Error;
+
+    Console.WriteLine(State.ValueOrDefault);
+}
+
+<h3>Products</h3>
+
+<Addons>
+    <Addon AddonType="AddonType.Body">
+        <TextEdit Placeholder="Searh term" @bind-Text="@SearchTextEditValue" />
+    </Addon>
+    <Addon AddonType="AddonType.End">
+        <Button Color="Color.Secondary" Clicked="UpdateSearchTerm">Search</Button>
+    </Addon>
+</Addons>
+
+<ListGroup Flush="true">
+    @foreach (var product in state)
+    {
+        <ListGroupItem>
+            <ProductListItem Product="product" OnDeleteCallback="DeleteProductById"></ProductListItem>
+        </ListGroupItem>
+    }
+</ListGroup>
+
+@code {
+    public string SearchTextEditValue { get; set; } = "";
+
+    protected override async Task<List<ProductDto>> ComputeState(CancellationToken cancellationToken)
+    {
+        var locals = await MutableState.Computed.Use();
+        var products = await ProductService.GetAll(locals.SearchTerm, cancellationToken);
+        return products;
+    }
+
+    public void UpdateSearchTerm()
+    {
+        MutableState.Value.SearchTerm = SearchTextEditValue;
+        MutableState.Invalidate();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.Update();
+        await base.OnInitializedAsync();
+    }
+
+    public async Task DeleteProductById(int productId)
+    {
+        await ProductService.Delete(new DeleteProductCommand { ProductId = productId });
+    }
+}

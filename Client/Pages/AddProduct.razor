@@ -1,0 +1,35 @@
+﻿@page "/addProduct"
+@inject IProductService ProductService
+
+<h3>Add Product</h3>
+
+<Field>
+    <FieldLabel>Product name</FieldLabel>
+    <TextEdit @bind-Text="AddProductCommand.Name" />
+</Field>
+<Field>
+    <FieldLabel>List Price</FieldLabel>
+    <NumericEdit @bind-Value="AddProductCommand.ListPrice" />
+</Field>
+<Field>
+    <FieldLabel>Standard cost</FieldLabel>
+    <NumericEdit @bind-Value="AddProductCommand.StandardCost" />
+</Field>
+<Field>
+    <FieldLabel>Size</FieldLabel>
+    <TextEdit @bind-Text="AddProductCommand.Size" />
+</Field>
+<Field>
+    <FieldLabel>ProductNumber</FieldLabel>
+    <TextEdit @bind-Text="AddProductCommand.ProductNumber" />
+</Field>
+<Field>
+    <Button Color="Color.Primary" Clicked="@AddProductMethod">Add product</Button>
+</Field>
+
+@code {
+    public AddProductCommand AddProductCommand { get; set; } = new AddProductCommand();
+
+    public Task AddProductMethod()
+        => ProductService.Add(AddProductCommand, CancellationToken.None);
+}

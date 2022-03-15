@@ -1,0 +1,7 @@
+﻿<Heading Size="HeadingSize.Is5" Margin="Margin.Is1.FromBottom">@Order.TotalDue USD</Heading>
+<Paragraph Margin="Margin.Is1.FromBottom">@Order.OrderDate </Paragraph>
+
+@code {
+    [Parameter]
+    public OrderHeaderDto Order { get; set; }
+}

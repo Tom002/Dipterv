@@ -1,0 +1,45 @@
+﻿@page "/orders"
+@inject IOrderService OrderService
+@inject Session Session
+@inject IAuth AuthService
+@inherits ComputedStateComponent<List<OrderHeaderDto>>
+
+@{
+    var state = State.LatestNonErrorValue;
+    var error = State.Error;
+}
+
+<h3>MyOrders</h3>
+
+<AuthorizeView>
+    <Authorized>
+        <ListGroup Flush="true">
+            @if (State.LatestNonErrorValue != null)
+            {
+                @foreach (var order in State.LatestNonErrorValue)
+                {
+                    <ListGroupItem>
+                        <OrderListItem Order="order"></OrderListItem>
+                    </ListGroupItem>
+                }
+
+            }
+        </ListGroup>
+    </Authorized>
+    <NotAuthorized>
+        <h3> You have to sign in to view orders</h3>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await State.Update();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task<List<OrderHeaderDto>> ComputeState(CancellationToken cancellationToken)
+    {
+        return await OrderService.GetMyOrders(Session, cancellationToken);
+    }
+}

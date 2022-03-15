@@ -1,13 +1,11 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Dipterv</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
+﻿<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="">BlazorHosted</a>
+    <button title="Navigation menu" class="navbar-toggler">
+        <span class="navbar-toggler-icon"></span>
+    </button>
 </div>
 
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+<div>
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
@@ -15,25 +13,35 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="oi oi-plus" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="products">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> List products
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="fetchdata">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
+            <NavLink class="nav-link" href="addProduct">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Add product
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="registerAdmin">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Register admin
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="registerCustomer">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Customer register
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="registerUser">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Login
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="orders">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> View orders
             </NavLink>
         </div>
     </nav>
 </div>
 
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-}

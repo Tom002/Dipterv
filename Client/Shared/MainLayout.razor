@@ -1,4 +1,6 @@
 ﻿@inherits LayoutComponentBase
+@inject Session Session
+@inject Stl.Fusion.Authentication.IAuth AuthService
 
 <div class="page">
     <div class="sidebar">
@@ -6,12 +8,42 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
-        </div>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHeaderCell>Session.Id</TableHeaderCell>
+                    <TableHeaderCell>User.IsAuthenticated</TableHeaderCell>
+                    <TableHeaderCell>User.Id</TableHeaderCell>
+                    <TableHeaderCell>User.Name</TableHeaderCell>
+                    <TableHeaderCell>User.Version</TableHeaderCell>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                <TableRow>
+                    <TableRowCell>@Session.Id</TableRowCell>
+                    <TableRowCell>@User.IsAuthenticated</TableRowCell>
+                    <TableRowCell>@User.Id</TableRowCell>
+                    <TableRowCell>@User.Name</TableRowCell>
+                    <TableRowCell>@User.Version</TableRowCell>
+                </TableRow>
+            </TableBody>
+        </Table>
 
         <article class="content px-4">
             @Body
         </article>
     </main>
 </div>
+
+@code
+{
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+    private AuthState AuthState { get; set; } = new(new User(""));
+    private User User => AuthState.User;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthState = await AuthStateTask;
+    }
+}

@@ -1,0 +1,175 @@
+﻿@page "/product/{Id:int}"
+@using Dipterv.Client.Interfaces
+@inherits MixedStateComponent<ProductDetailsDto, ProductDetailsLocalModel>
+@inject IProductReviewService ProductReviewService
+@inject IProductDetailsService ProductDetailsService
+@inject Session Session
+@inject IAuth AuthService
+@inject IOrderService OrderService;
+
+@{
+    var state = State.LatestNonErrorValue;
+    var error = State.Error;
+    var localState = MutableState.LatestNonErrorValue;
+}
+
+<h3>User info</h3>
+
+
+
+
+<h3>Product details</h3>
+
+<Card>
+    <CardBody>
+        <CardTitle Size="10">Product name: @state.Name</CardTitle>
+        <CardText> Price: @state.ListPrice </CardText>
+        <CardText> Product number: @state.ProductNumber </CardText>
+    </CardBody>
+</Card>
+
+@if (state.Reviews.Any())
+{
+    <h3>Reviews</h3>
+
+    <ListGroup>
+        @{
+            foreach (var review in state.Reviews)
+            {
+                <ListGroupItem>
+                    <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100">
+                        <Heading Size="HeadingSize.Is5" Margin="Margin.Is1.FromBottom">@review.ReviewerName</Heading>
+                        <Small>@review.ReviewDate.ToShortDateString()</Small>
+                    </Div>
+                    <Paragraph Margin="Margin.Is1.FromBottom">@review.Comments</Paragraph>
+                    <Rating SelectedValue="@review.Rating" MaxValue="5" />
+
+                    <Button Color="Color.Danger" @onclick="() => DeleteReview(review.ProductReviewId)" Disabled="!state.CanDeleteReview">Delete</Button>
+                </ListGroupItem>
+            }
+        }
+    </ListGroup>
+}
+
+
+<h3>Add review</h3>
+
+<Field>
+    <FieldLabel>Your name</FieldLabel>
+    <TextEdit Placeholder="Enter your name" @bind-Text="Review.ReviewerName" />
+</Field>
+<Field>
+    <FieldLabel>Your email</FieldLabel>
+    <TextEdit Placeholder="Enter your email" @bind-Text="Review.EmailAddress" />
+</Field>
+<Field>
+    <FieldLabel>Review</FieldLabel>
+    <TextEdit Size="Size.Large" Placeholder="Enter your review" @bind-Text="Review.Comments" />
+</Field>
+<Field>
+    <Rating @bind-SelectedValue="@Review.Rating" MaxValue="5" />
+</Field>
+<Field>
+    <Button Color="Color.Primary" Clicked="@AddReview">Add review</Button>
+</Field>
+
+<h3>Buy Product</h3>
+
+@if (state.CanBuyProduct)
+{
+    <Heading Size="HeadingSize.Is4" TextColor="TextColor.Primary"> You can buy this product </Heading>
+}
+else
+{
+    <Heading Size="HeadingSize.Is4" TextColor="TextColor.Danger"> We are no longer selling this product</Heading>
+}
+
+<h4>CurrentStock: @state.CurrentStock</h4>
+
+<Field>
+    <FieldLabel>Select the quantity</FieldLabel>
+    <NumericEdit TValue="short" Value="MutableState.Value.OrderQuantity" ValueChanged="UpdateOrderQuantity" Min="0" />
+</Field>
+
+<Button Color="Color.Success" Disabled="!state.CanSendOrder" Clicked="SendOrder">
+    Send order
+</Button>
+
+<h4>Unit price: @state.ListPrice</h4>
+<h4>Order price: @state.OrderPrice</h4>
+
+@if (state.SelectedSpecialOffer != null)
+{
+    <Heading Size="HeadingSize.Is4" TextColor="TextColor.Success"> You are eligible for a @state.SelectedSpecialOffer.DiscountPct% discount </Heading>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
+    private User User => AuthState.User;
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthState = await AuthStateTask;
+    }
+
+    [Parameter]
+    public int Id { get; set; }
+
+    public short OrderQuantity { get; set; } = 0;
+
+    public ProductReviewDto Review { get; set; } = new ProductReviewDto();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.Update();
+        await base.OnInitializedAsync();
+    }
+
+    public void UpdateOrderQuantity(short value)
+    {
+        MutableState.Value.OrderQuantity = value;
+        MutableState.Invalidate();
+    }
+
+    protected override async Task<ProductDetailsDto> ComputeState(CancellationToken cancellationToken)
+    {
+        var localState = await MutableState.Computed.Use();
+
+        var user = await AuthService.GetUser(Session);
+
+        return await ProductDetailsService.GetProductDetails(Session, Id, localState.OrderQuantity, cancellationToken);
+    }
+
+    public async Task AddReview()
+    {
+        var user = await AuthService.GetUser(Session);
+
+        await ProductReviewService.Add(
+            new AddProductReviewCommand
+            {
+                ProductId = Id,
+                Comments = Review.Comments,
+                EmailAddress = Review.EmailAddress,
+                Rating = Review.Rating,
+                ReviewerName = Review.ReviewerName
+            }, CancellationToken.None);
+    }
+
+    public async Task SendOrder()
+    {
+        await OrderService.SubmitOrder(
+            new SubmitOrderCommand
+            {
+                Session = Session,
+                ProductId = Id,
+                Quantity = MutableState.Value.OrderQuantity
+            });
+    }
+
+    public Task DeleteReview(int productReviewId)
+        => ProductReviewService.Delete(new DeleteProductReviewCommand { Session = Session, ProductId = Id, ProductReviewId = productReviewId }, CancellationToken.None);
+}

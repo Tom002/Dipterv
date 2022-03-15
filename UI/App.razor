@@ -1,0 +1,34 @@
+@using Stl.Text
+@implements IDisposable
+@inject BlazorCircuitContext _blazorCircuitContext
+
+<CascadingAuthState SessionId="@SessionId">
+    <ThemeProvider Theme="@Theme">
+        <Router AppAssembly="@typeof(Program).Assembly">
+            <Found Context="routeData">
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <p>Sorry, there's nothing at this address.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </ThemeProvider>
+</CascadingAuthState>
+
+@code {
+    private Theme Theme { get; } = new() { IsGradient = true, IsRounded = false };
+
+    [Parameter]
+    public string SessionId { get; set; } = Symbol.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (!_blazorCircuitContext.IsPrerendering)
+            _blazorCircuitContext.RootComponent = this;
+    }
+
+    public void Dispose()
+        => _blazorCircuitContext.Dispose();
+}
