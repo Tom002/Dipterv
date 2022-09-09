@@ -9,6 +9,10 @@ using Stl.Fusion.Extensions;
 using Stl.Fusion.UI;
 using Stl.Fusion;
 using System;
+using Dipterv.Shared.Interfaces;
+using Dipterv.Shared.Interfaces.Clients;
+using Dipterv.Shared.Interfaces.ComputeServices;
+using Templates.TodoApp.UI.Mapping;
 
 namespace Templates.TodoApp.UI;
 
@@ -19,19 +23,36 @@ public static class StartupHelper
         var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
         var apiBaseUri = new Uri($"{baseUri}api/");
 
-        // Fusion services
+        // Fusion
         var fusion = services.AddFusion();
-        var fusionClient = fusion.AddRestEaseClient((_, o) => {
-            o.BaseUri = baseUri;
-            o.IsLoggingEnabled = true;
-            o.IsMessageLoggingEnabled = false;
-        });
-        fusionClient.ConfigureHttpClientFactory((c, name, o) => {
-            var isFusionClient = (name ?? "").StartsWith("Stl.Fusion");
-            var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
-            o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
-        });
+        var fusionClient = fusion.AddRestEaseClient(
+            (c, o) =>
+            {
+                o.BaseUri = baseUri;
+                o.IsLoggingEnabled = true;
+                o.IsMessageLoggingEnabled = false;
+            }).ConfigureHttpClientFactory(
+            (c, name, o) =>
+            {
+                var isFusionClient = (name ?? "").StartsWith("Stl.Fusion");
+                var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
+                o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
+            });
+
         fusion.AddAuthentication().AddRestEaseClient().AddBlazor();
+
+        fusionClient.AddReplicaService<IProductService, IProductClientDef>();
+        fusionClient.AddReplicaService<IProductReviewService, IProductReviewClientDef>();
+        fusionClient.AddReplicaService<IProductInventoryService, IProductInventoryClientDef>();
+        fusionClient.AddReplicaService<ISpecialOfferService, ISpecialOfferClientDef>();
+        fusionClient.AddReplicaService<IOrderService, IOrderClientDef>();
+        fusionClient.AddReplicaService<IAccountService, IAccountClientDef>();
+        fusionClient.AddReplicaService<IShoppingCartService, IShoppingCartClientDef>();
+        fusionClient.AddReplicaService<IShoppingCartDetailsService, IShoppingCartDetailsClientDef>();
+        fusionClient.AddReplicaService<IProductDetailsService, IProductDetailsClientDef>();
+        fusionClient.AddReplicaService<IProductSearchService, IProductSearchClientDef>();
+
+        services.AddAutoMapper(typeof(MappingProfile));
 
         ConfigureSharedServices(services);
     }

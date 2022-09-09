@@ -1,0 +1,261 @@
+﻿@page "/products"
+@using Templates.TodoApp.UI.Pages.Models
+@inherits MixedStateComponent<ProductListComputedState, ProductListLocalModel>
+@inject IProductSearchService ProductSearchService
+@inject IProductService ProductService
+@inject IShoppingCartService ShoppingCartService
+@inject Session Session
+
+@{
+    var state = State.ValueOrDefault ?? new ProductListComputedState();
+    var error = State.Error;
+}
+
+@*
+<StateOfStateBadge State="@State" />
+<WhenException Exception="error" />
+<Div Margin="Margin.Is1.OnY">
+    Updated: <b><MomentsAgoBadge Value="LastStateUpdateTime" /></b>
+</Div>
+<Div Margin="Margin.Is1.OnY">
+    Call:
+    <Button Color="Color.Danger" Size="Size.Small" Clicked="_ => StateHasChanged()">StateHasChanged()</Button>
+    <Button Color="Color.Danger" Size="Size.Small" Clicked="_ => State.Invalidate()">State.Invalidate()</Button>
+    <Button Color="Color.Danger" Size="Size.Small" Clicked="_ => State.Recompute()">State.Recompute()</Button>
+</Div>
+*@
+
+<h3>Products</h3>
+
+<h4>Search</h4>
+
+<Row>
+    <Column ColumnSize="ColumnSize.Is8">
+        <Addons>
+            <Addon AddonType="AddonType.Body">
+                <TextEdit Placeholder="Searh term" @bind-Text="@SearchTextEditValue" />
+            </Addon>
+            <Addon AddonType="AddonType.End">
+                <Button Color="Color.Secondary" Clicked="UpdateSearchTerm">Search</Button>
+            </Addon>
+        </Addons>
+    </Column>
+
+    <Column ColumnSize="ColumnSize.Is4">
+        <Addons>
+            <Addon AddonType="AddonType.Start">
+                <AddonLabel>Order by</AddonLabel>
+            </Addon>
+            <Addon AddonType="AddonType.Body">
+                <Select TValue="ProductOrderByEnum" SelectedValue="@MutableState.Value.PageRequest.Order" SelectedValueChanged="@OnOrderByChanged" >
+                    <SelectItem Value="ProductOrderByEnum.AverageReviews">Best reviews</SelectItem>
+                    <SelectItem Value="ProductOrderByEnum.PriceHighToLow">Price high to low</SelectItem>
+                    <SelectItem Value="ProductOrderByEnum.PriceLowToHigh">Price low to high</SelectItem>
+                    <SelectItem Value="ProductOrderByEnum.NewestArrivals">Newest arrivals</SelectItem>
+                </Select>
+            </Addon>
+        </Addons>
+    </Column>
+</Row>
+
+<br />
+
+<Switch TValue="bool" Checked="@MutableState.Value.Filter.OnlyShowProductsInStock" CheckedChanged="@OnOnlyShowProductsInStockChanged">Only show products in stock</Switch>
+<Switch TValue="bool" Checked="@MutableState.Value.Filter.OnlyShowDiscountedProducts" CheckedChanged="@OnOnlyShowDiscountedProductsChanged">Only show discounted products</Switch>
+<Switch TValue="bool" Checked="@MutableState.Value.Filter.OnlyShowProductsAvalaible" CheckedChanged="@OnOnlyShowProductsAvalaibleChanged">Only show products available for purchase</Switch>
+
+<br />
+
+<Row>
+    <Column ColumnSize="ColumnSize.Is6">
+        <Addons>
+            <Addon AddonType="AddonType.Start">
+                <AddonLabel>Category</AddonLabel>
+            </Addon>
+            <Addon AddonType="AddonType.Body">
+                <Select TValue="int?" SelectedValue="@MutableState.Value.Filter.ProductCategoryId" SelectedValueChanged="UpdateCategoryFilter">
+                    <SelectItem Value="(int?)null" Hidden="true"></SelectItem>
+                    @foreach(var category in state.ProductCategories)
+                    {
+                        <SelectItem Value="category.ProductCategoryId">@category.Name</SelectItem>
+                    }
+                </Select>
+            </Addon>
+        </Addons>
+    </Column>
+
+    <Column ColumnSize="ColumnSize.Is6">
+        <Addons>
+            <Addon AddonType="AddonType.Start">
+                <AddonLabel>Subcategory</AddonLabel>
+            </Addon>
+            @*<Addon AddonType="AddonType.Body">
+                <Select TValue="int?" @bind-SelectedValue="@ProductSubcategoryId" Disabled="!ProductCategoryId.HasValue">
+                    if(ProductCategoryId.HasValue)
+                    {
+                        <SelectItem Value="(int?)null" Hidden="true"></SelectItem>
+                        @foreach(var subcategory in state.ProductCategories.First(p => p.ProductCategoryId == ProductCategoryId).Subcategories)
+                        {
+                            <SelectItem Value="subcategory.ProductSubcategoryId">@subcategory.Name</SelectItem>
+                        }
+                    }
+                </Select>
+            </Addon>*@
+        </Addons>
+    </Column>
+</Row>
+
+<br />
+
+<h4>Rating</h4>
+<RadioGroup TValue="int" CheckedValue="@MutableState.Value.Filter.MinRating" CheckedValueChanged="@OnMinRatingValueChanged" Name="minRating" Orientation="Orientation.Vertical">
+    <Radio Value="1">
+        <Rating Color="Color.Success" SelectedValue="1" Disabled=true ReadOnly="true" /> & Up
+     </Radio>
+     <Radio Value="2">
+        <Rating Color="Color.Success" SelectedValue="2" Disabled=true ReadOnly="true" /> & Up
+     </Radio>
+     <Radio Value="3">
+        <Rating Color="Color.Success" SelectedValue="3" Disabled=true ReadOnly="true" /> & Up
+     </Radio>
+    <Radio Value="4">
+        <Rating Color="Color.Success" SelectedValue="4" Disabled=true ReadOnly="true" /> & Up
+     </Radio>
+</RadioGroup>
+
+<br />
+
+<h4>Price</h4>
+
+<Row>
+    <Column ColumnSize="ColumnSize.Is4">
+        <Addons>
+            <Addon AddonType="AddonType.Start">
+                <AddonLabel>Min price:</AddonLabel>
+            </Addon>
+            <Addon AddonType="AddonType.Body">
+                <NumericPicker Width="Width.Is25" TValue="decimal?" CurrencySymbol="$" @bind-Value="@MinPriceNumericEditValue" Step="10"  />
+            </Addon>
+        </Addons>
+    </Column>
+
+    <Column ColumnSize="ColumnSize.Is4">
+        <Addons>
+            <Addon AddonType="AddonType.Start">
+                <AddonLabel>Max price:</AddonLabel>
+            </Addon>
+            <Addon AddonType="AddonType.Body">
+                <NumericPicker Width="Width.Is25" TValue="decimal?" CurrencySymbol="$" @bind-Value="@MaxPriceNumericEditValue" Step="10" />
+            </Addon>
+        </Addons>
+    </Column>
+
+    <Column ColumnSize="ColumnSize.Is4">
+        <Button Color="Color.Secondary" Clicked="UpdatePriceFilter">Go</Button>
+    </Column>
+</Row>
+
+<ListGroup Flush>
+    @foreach (var product in state.SearchResults.Results)
+    {
+        <ListGroupItem>
+            <ProductListItem Categories="state.ProductCategories" CanDelete="CanDeleteProduct" CanEdit="CanEditProduct" Product="product" OnDeleteCallback="DeleteProductById"></ProductListItem>
+        </ListGroupItem>
+    } 
+</ListGroup>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+
+    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
+
+    private User User => AuthState.User;
+
+    private DateTime LastStateUpdateTime { get; set; } = DateTime.UtcNow;
+
+    private bool CanDeleteProduct => User.Claims.Contains(new KeyValuePair<string, string>("product_delete", "true"));
+
+    private bool CanEditProduct => User.Claims.Contains(new KeyValuePair<string, string>("product_edit", "true"));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthState = await AuthStateTask;
+    }
+
+    public string SearchTextEditValue { get; set; } = "";
+
+    public decimal? MinPriceNumericEditValue { get; set; } = default;
+
+    public decimal? MaxPriceNumericEditValue { get; set; } = default;
+
+    protected override async Task<ProductListComputedState> ComputeState(CancellationToken cancellationToken)
+    {
+        var locals = await MutableState.Computed.Use();
+
+        var categories = await ProductService.GetCategories(cancellationToken);
+        var results = await ProductSearchService.Search(new ProductSearchDto { Filter = locals.Filter, PageRequest = locals.PageRequest, Session = Session }, cancellationToken);
+
+        return new ProductListComputedState
+        {
+            ProductCategories = categories,
+            SearchResults = results
+        };
+    }
+
+    public void UpdateSearchTerm()
+    {
+        MutableState.Set(new ProductListLocalModel { Filter = new FilterProductDto {ProductName = SearchTextEditValue}});
+    }
+
+    public void OnOnlyShowProductsInStockChanged(bool value)
+    {
+        MutableState.Value.Filter.OnlyShowProductsInStock = value;
+        MutableState.Invalidate();
+    }
+
+    public void OnOnlyShowDiscountedProductsChanged(bool value)
+    {
+        MutableState.Value.Filter.OnlyShowDiscountedProducts = value;
+        MutableState.Invalidate();
+    }
+
+    public void OnOnlyShowProductsAvalaibleChanged(bool value)
+    {
+        MutableState.Value.Filter.OnlyShowProductsAvalaible = value;
+        MutableState.Invalidate();
+    }
+
+    public void OnMinRatingValueChanged(int value)
+    {
+        MutableState.Value.Filter.MinRating = value;
+        MutableState.Invalidate();
+    }
+
+    public void UpdatePriceFilter()
+    {
+        MutableState.Value.Filter.MinPrice = MinPriceNumericEditValue;
+        MutableState.Value.Filter.MaxPrice = MaxPriceNumericEditValue;
+        MutableState.Invalidate();
+    }
+
+    public void UpdateCategoryFilter(int? value)
+    {
+        MutableState.Value.Filter.ProductCategoryId = value;
+        MutableState.Invalidate();
+    }
+
+    public void OnOrderByChanged(ProductOrderByEnum value)
+    {
+        MutableState.Value.PageRequest.Order = value;
+        MutableState.Invalidate();
+    }
+
+    public async Task DeleteProductById(int productId)
+    {
+        await ProductService.Delete(new DeleteProductCommand { ProductId = productId });
+    }
+
+    protected override MutableState<ProductListLocalModel>.Options GetMutableStateOptions()
+        => new () { InitialValue = new ProductListLocalModel() };
+}

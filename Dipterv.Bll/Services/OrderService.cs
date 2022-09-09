@@ -3,6 +3,8 @@ using AutoMapper.QueryableExtensions;
 using Dipterv.Dal.DbContext;
 using Dipterv.Dal.Model;
 using Dipterv.Shared.Dto.Order;
+using Dipterv.Shared.Exceptions;
+using Dipterv.Shared.Helper;
 using Dipterv.Shared.Interfaces;
 using Dipterv.Shared.Interfaces.ComputeServices;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +19,8 @@ namespace Dipterv.Bll.Services
         private readonly IAuth _authService;
         private readonly ICustomerService _customerService;
         private readonly IProductService _productService;
+        private readonly IProductInventoryService _productInventoryService;
+        private readonly IShoppingCartDetailsService _shoppingCartDetailsService;
         private readonly IMapper _mapper;
 
         public OrderService(
@@ -24,11 +28,15 @@ namespace Dipterv.Bll.Services
             IAuth authService,
             ICustomerService customerService,
             IProductService productService,
+            IProductInventoryService productInventoryService,
+            IShoppingCartDetailsService shoppingCartDetailsService,
             IMapper mapper) : base(services)
         {
             _authService = authService;
             _customerService = customerService;
             _productService = productService;
+            _productInventoryService = productInventoryService;
+            _shoppingCartDetailsService = shoppingCartDetailsService;
             _mapper = mapper;
         }
 
@@ -60,73 +68,81 @@ namespace Dipterv.Bll.Services
             return new List<OrderHeaderDto>();
         }
 
-        public virtual async Task SubmitOrder(SubmitOrderCommand submitOrder, CancellationToken cancellationToken = default)
+        public virtual async Task SubmitOrder(SubmitOrderCommand command, CancellationToken cancellationToken = default)
         {
+            //throw new NotImplementedException();
+
             if (Computed.IsInvalidating())
             {
-                _ = GetMyOrders(submitOrder.Session, cancellationToken);
+                _ = GetMyOrders(command.Session, cancellationToken);
+                _ = _productInventoryService.GetInventoriesForProduct(3, cancellationToken);
+                _ = _productInventoryService.ProductGetTotalStock(3, cancellationToken);
                 return;
             }
 
-            await using var dbContext = CreateDbContext(readWrite: true);
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
 
-            var user = await _authService.GetUser(submitOrder.Session, CancellationToken.None);
-            var hasClaim = user.Claims.TryGetValue("customer_id", out string customerId);
+            var shoppingCart = await _shoppingCartDetailsService.GetShoppingCartForCustomer(command.Session);
 
-            if (hasClaim)
+            if (!shoppingCart.CanSendOrder)
+                throw new BusinessException("Can't send this order currently");
+
+            if (!shoppingCart.ShoppingCartItems.Any())
+                throw new BusinessException("Can't send order without items");
+
+            int? customerId = null;
+            var user = await _authService.GetUser(command.Session, cancellationToken);
+            if (user.IsAuthenticated && user.Claims.ContainsKey("customer_id"))
             {
-                var customerIdInt = int.Parse(customerId);
-                var customer = await _customerService.GetCustomer(customerIdInt);
-
-                var product = await _productService.TryGet(submitOrder.ProductId, cancellationToken);
-
-                var specialOfferProduct = await dbContext.SpecialOfferProducts.AsQueryable()
-                    .SingleOrDefaultAsync(s => s.SpecialOfferId == 1 && s.ProductId == product.ProductId);
-
-                var order = new SalesOrderHeader
-                {
-                    RevisionNumber = 8,
-                    OrderDate = DateTime.Now,
-                    DueDate = DateTime.Now.AddDays(5),
-                    Status = 1,
-                    CustomerId = customerIdInt,
-
-                    BillToAddressId = 1,
-                    ShipToAddressId = 1,
-
-                    ShipMethodId = 1,
-                    SubTotal = product.ListPrice * submitOrder.Quantity,
-                    TaxAmt = 10,
-                    Freight = 10,
-
-                    SalesOrderDetails = new List<SalesOrderDetail>
-                    {
-                        new SalesOrderDetail
-                        {
-                            OrderQty = submitOrder.Quantity,
-                            ProductId = submitOrder.Quantity,
-                            SpecialOfferId = specialOfferProduct.SpecialOfferId,
-                            SpecialOfferProduct = specialOfferProduct,
-                            UnitPrice = product.ListPrice,
-                            UnitPriceDiscount = 0
-                        }
-                    }
-                };
-
-                try
-                {
-                    dbContext.SalesOrderHeaders.Add(order);
-                    await dbContext.SaveChangesAsync();
-                }
-                catch (Exception e)
-                {
-                    var a = 5;
-                }
+                customerId = int.Parse(user.Claims["customer_id"]);
             }
-            else
-            {
-                throw new Exception("Only customers can have orders");
-            }
+
+            // Product inventory
+            var productId = shoppingCart.ShoppingCartItems.First().ProductId;
+            var productInventory = await dbContext.ProductInventories.Where(pi => pi.ProductId == productId).FirstAsync();
+
+            productInventory.Quantity -= Convert.ToInt16(shoppingCart.ShoppingCartItems.First().Quantity);
+            await dbContext.SaveChangesAsync();
+
+            //var order = new SalesOrderHeader
+            //{
+            //    RevisionNumber = 8,
+            //    OrderDate = DateTime.Now,
+            //    DueDate = DateTime.Now.AddDays(5),
+            //    Status = 1,
+            //    // TODO: Guest user order
+            //    CustomerId = customerId.HasValue ? customerId.Value : 1,
+
+            //    BillToAddressId = 1,
+            //    ShipToAddressId = 1,
+            //    ShipMethodId = 1,
+            //    SubTotal = product.ListPrice * submitOrder.Quantity,
+            //    TaxAmt = 10,
+            //    Freight = 10,
+
+            //    SalesOrderDetails = new List<SalesOrderDetail>
+            //        {
+            //            new SalesOrderDetail
+            //            {
+            //                OrderQty = submitOrder.Quantity,
+            //                ProductId = submitOrder.Quantity,
+            //                SpecialOfferId = specialOfferProduct.SpecialOfferId,
+            //                SpecialOfferProduct = specialOfferProduct,
+            //                UnitPrice = product.ListPrice,
+            //                UnitPriceDiscount = 0
+            //            }
+            //        }
+            //};
+
+            //try
+            //{
+            //    dbContext.SalesOrderHeaders.Add(order);
+            //    await dbContext.SaveChangesAsync();
+            //}
+            //catch (Exception e)
+            //{
+            //    var a = 5;
+            //}
         }
     }
 }

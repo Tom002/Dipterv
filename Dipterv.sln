@@ -2,10 +2,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 16.0.0.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dipterv.Server", "Server\Dipterv.Server.csproj", "{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dipterv.Client", "Client\Dipterv.Client.csproj", "{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dipterv.Shared", "Shared\Dipterv.Shared.csproj", "{F4029C43-50AB-426C-B3DB-21A8C6E3AECA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dipterv.Dal", "Dipterv.Dal\Dipterv.Dal.csproj", "{A64D6D3C-38BB-4283-8F7A-4250FB14B0BB}"
@@ -14,7 +10,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dipterv.Bll", "Dipterv.Bll\
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{30952BCD-8B90-4B5D-954A-9E2643F9A5A2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Host", "Host\Host.csproj", "{0A563E8D-4DD6-4736-81BF-DCF6B31EA8CE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "Host\Server.csproj", "{0A563E8D-4DD6-4736-81BF-DCF6B31EA8CE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI", "UI\UI.csproj", "{209D7C79-2C6A-4C03-9E22-49FE9105AF21}"
 EndProject
@@ -28,30 +24,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Debug|x64.Build.0 = Debug|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Debug|x86.Build.0 = Debug|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Release|x64.ActiveCfg = Release|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Release|x64.Build.0 = Release|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Release|x86.ActiveCfg = Release|Any CPU
-		{3E6DA815-5F72-4B21-AFE8-F674BC76E0F9}.Release|x86.Build.0 = Release|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Debug|x64.Build.0 = Debug|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Debug|x86.Build.0 = Debug|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Release|x64.ActiveCfg = Release|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Release|x64.Build.0 = Release|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Release|x86.ActiveCfg = Release|Any CPU
-		{92EA3F6F-73D9-4BD6-8E94-A1995A61DC6B}.Release|x86.Build.0 = Release|Any CPU
 		{F4029C43-50AB-426C-B3DB-21A8C6E3AECA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F4029C43-50AB-426C-B3DB-21A8C6E3AECA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4029C43-50AB-426C-B3DB-21A8C6E3AECA}.Debug|x64.ActiveCfg = Debug|Any CPU

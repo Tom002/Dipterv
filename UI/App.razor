@@ -1,5 +1,6 @@
 @using Stl.Text
 @implements IDisposable
+@using Blazorise.Components
 @inject BlazorCircuitContext _blazorCircuitContext
 
 <CascadingAuthState SessionId="@SessionId">
@@ -14,6 +15,7 @@
                 </LayoutView>
             </NotFound>
         </Router>
+        <NotificationAlert />
     </ThemeProvider>
 </CascadingAuthState>
 

@@ -62,6 +62,16 @@ namespace Dipterv.Bll.Services
             return default;
         }
 
+        [ComputeMethod]
+        public virtual async Task<List<SpecialOfferDto>> TryGetMany(List<int> specialOfferIdList, CancellationToken cancellationToken = default)
+        {
+            var specialOffers = await Task.WhenAll(specialOfferIdList.Select(async specialOfferId =>
+            {
+                return await TryGet(specialOfferId, cancellationToken);
+            }));
+            return specialOffers.ToList();
+        }
+
         [CommandHandler]
         public virtual async Task Edit(UpdateSpecialOfferCommand command, CancellationToken cancellationToken = default)
         {
@@ -71,7 +81,7 @@ namespace Dipterv.Bll.Services
                 return;
             }
 
-            using var dbContext = CreateDbContext(readWrite: true);
+            using var dbContext = await CreateCommandDbContext(cancellationToken);
             var specialOffer = await dbContext.SpecialOffers.AsQueryable().SingleOrDefaultAsync(s => s.SpecialOfferId == command.SpecialOfferId, cancellationToken);
             if (specialOffer is SpecialOffer)
             {
@@ -83,7 +93,7 @@ namespace Dipterv.Bll.Services
         [CommandHandler]
         public virtual async Task AddSpecialOffer(AddSpecialOfferCommand command, CancellationToken cancellationToken = default)
         {
-            using var dbContext = CreateDbContext(readWrite: true);
+            using var dbContext = await CreateCommandDbContext(cancellationToken);
             var specialOffer = _mapper.Map<SpecialOffer>(command);
             dbContext.SpecialOffers.Add(specialOffer);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -98,7 +108,7 @@ namespace Dipterv.Bll.Services
                 return;
             }
 
-            using var dbContext = CreateDbContext(readWrite: true);
+            using var dbContext = await CreateCommandDbContext(cancellationToken);
             var specialOfferProduct = new SpecialOfferProduct { ProductId = command.ProductId, SpecialOfferId = command.SpecialOfferId };
             dbContext.SpecialOfferProducts.Add(specialOfferProduct);
             await dbContext.SaveChangesAsync();

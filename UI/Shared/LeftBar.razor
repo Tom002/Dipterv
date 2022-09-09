@@ -1,17 +1,111 @@
 ﻿@using Blazorise.Icons.FontAwesome
+@using Dipterv.Shared.Dto.ShoppingCart
+@using Templates.TodoApp.UI.Pages.Models
+@using AutoMapper
 
-<Bar Mode="BarMode.VerticalInline" CollapseMode="BarCollapseMode.Small">
+@inject IShoppingCartDetailsService ShoppingCartDetailsService
+@inject IOrderService OrderService
+@inject Session Session
+@inject IMapper Mapper
+@inherits ComputedStateComponent<ShoppingCartDto>
+
+@{
+    var state = State.ValueOrDefault ?? new ShoppingCartDto();
+    var error = State.Error;
+}
+
+<Bar Mode="BarMode.VerticalInline" CollapseMode="BarCollapseMode.Hide">
     <BarToggler />
     <BarBrand>
-        @Item(FontAwesomeIcons.Home, "Home", "")
+        @Item(FontAwesomeIcons.ShoppingBasket, "My shopping cart", "shoppingCart")
     </BarBrand>
     <BarMenu>
         <BarStart>
-            @Item(FontAwesomeIcons.List, "Todo", "todo")
-            @Item(FontAwesomeIcons.User, "Authentication", "authentication")
-            <BarItem Style="min-height: 20px"></BarItem>
-            @Item(FontAwesomeIcons.Code, "Source @ GitHub", "https://github.com/servicetitan/Stl.Fusion.Samples")
+            @if(state.ShoppingCartItems.Any())
+            {
+                @foreach (var cartItem in state.ShoppingCartItems)
+                {
+                    <BarItem>
+                        <Card>
+                            <CardBody>
+                                @if(cartItem.Product.CanBuyProduct && cartItem.Product.CurrentStock < cartItem.Quantity)
+                                {
+                                    <Alert Color="Color.Danger" Visible="cartItem.Product.CurrentStock == 0">
+                                        <AlertDescription>This product is currently out of stock</AlertDescription>
+                                    </Alert>
+
+                                    <Alert Color="Color.Danger" Visible="cartItem.Product.CurrentStock > 0">
+                                        <AlertDescription>We currently only have @cartItem.Product.CurrentStock in stock, decrease selected quantity to send order</AlertDescription>
+                                    </Alert>
+                                }
+                                else if(cartItem.Product.CanBuyProduct && cartItem.Product.CurrentStock >= cartItem.Quantity)
+                                {
+                                    @if(cartItem.ReservedQuantity < cartItem.Quantity)
+                                    {
+                                        <Alert Color="Color.Warning" Visible="cartItem.ReservedQuantity == 0">
+                                            <AlertDescription>You cant currently order this product, because it's reserved for others</AlertDescription>
+                                        </Alert>
+
+                                        <Alert Color="Color.Warning" Visible="cartItem.ReservedQuantity > 0">
+                                            <AlertDescription>Currently you can only order @cartItem.ReservedQuantity from this product beacuse it's also reserved for others</AlertDescription>
+                                        </Alert>
+                                    }
+                                }
+
+                                @*@if(cartItem.cA != null)
+                                {
+                                    <Badge Color="Color.Primary">@CategoryName</Badge>
+                                }
+                                @if(cartItem.Product != null)
+                                {
+                                    <Badge Color="Color.Secondary">@SubcategoryName</Badge>
+                                }*@
+
+                                <CardTitle Size="5">@cartItem.Product.Name</CardTitle>
+                                <CardSubtitle>@cartItem.Product.ProductNumber</CardSubtitle>
+                                <Div>
+                                    <Field>
+                                        <FieldLabel>Select the quantity</FieldLabel>
+                                        <NumericEdit Width="Width.Is75" TValue="int" Value="cartItem.Product.QuantityInShoppingCart.Value" ValueChanged="(value) => UpdateOrderQuantity(value, cartItem.ShoppingCartItemId, cartItem.ProductId)"   Min="1" Step="1"/>
+                                    </Field>
+                                    <Field>
+                                        <FieldLabel>Item cost</FieldLabel>
+                                        <Paragraph TextColor="TextColor.Info">
+                                            @(cartItem.Product.ListPrice * cartItem.Quantity) USD
+                                        </Paragraph>
+                                    </Field>
+                                    <Button Color="Color.Danger" Clicked="() => RemoveFromShoppingCart(cartItem.Quantity, cartItem.ShoppingCartItemId, cartItem.ProductId)">Remove from shopping cart</Button>
+                               </Div>
+                            </CardBody>
+                        </Card>
+                    </BarItem>
+                }
+            }
+            else
+            {
+                <BarItem>
+                    <Paragraph TextColor="TextColor.Info">
+                        You cart is currently empty
+                    </Paragraph>
+                </BarItem>
+            }
+
         </BarStart>
+
+        <BarEnd>
+            @if(state.ShoppingCartItems.Any())
+            {
+                <BarItem>
+                    <Alert Color="Color.Danger" Visible="!state.CanSendOrder">
+                        <AlertDescription>You can't currently send this order, because some products are out of stock or reserved for others</AlertDescription>
+                    </Alert>
+                    <Paragraph TextColor="TextColor.Info">
+                        Order total: @(state.ShoppingCartItems.Sum(sci => sci.Quantity * sci.Product.ListPrice)) USD
+                    </Paragraph>
+                    <Button Width="Width.Is100" Color="Color.Primary" Disabled="!state.CanSendOrder" Clicked="() => OrderService.SubmitOrder(new SubmitOrderCommand {Session = Session})">Send order</Button>
+                </BarItem>
+            }
+        </BarEnd>
     </BarMenu>
 </Bar>
 
@@ -24,6 +118,30 @@
                 <BarLink Title="@title" To="@href" Target="@target" Match="@match">
                     <BarIcon IconName="@icon"></BarIcon> @title
                 </BarLink>
-            </BarItem>;
+    </BarItem>
+    ;
     }
+
+    protected override Task<ShoppingCartDto> ComputeState(CancellationToken cancellationToken)
+        => ShoppingCartDetailsService.GetShoppingCartForCustomer(Session, cancellationToken);
+
+    public void UpdateOrderQuantity(int quantity, int shoppingCartItemId, int productId) =>
+        ShoppingCartDetailsService.UpdateProductQuantityInCart(new UpdateShoppingCartItemCommand
+            {
+                Quantity = quantity,
+                Session = Session,
+                CartItemId = shoppingCartItemId,
+                ProductId = productId
+            });
+
+    public void RemoveFromShoppingCart(int quantity, int shoppingCartItemId, int productId) =>
+        ShoppingCartDetailsService.RemoveProductFromCart(
+            new RemoveShoppingCartItemCommand
+            {
+                Session = Session,
+                CartItemId = shoppingCartItemId,
+                ProductId = productId,
+                Quantity = quantity
+            });
 }
+

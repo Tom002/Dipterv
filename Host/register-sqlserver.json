@@ -1,0 +1,15 @@
+{
+  "name": "adventureworks-connector2",
+  "config": {
+    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
+    "tasks.max": "1",
+    "database.server.name": "adventureworks",
+    "database.hostname": "sqlserver",
+    "database.port": "1433",
+    "database.user": "sa",
+    "database.password": "Password123!",
+    "database.dbname": "AdventureWorks2019",
+    "database.history.kafka.bootstrap.servers": "kafka:29092",
+    "database.history.kafka.topic": "schema-changes.adventureworks"
+  }
+}

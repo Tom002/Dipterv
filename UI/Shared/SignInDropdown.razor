@@ -1,5 +1,4 @@
 @using Stl.Fusion.Authentication
-@inject BlazorModeHelper BlazorModeHelper
 @inject ClientAuthHelper ClientAuthHelper
 
 @{
@@ -14,11 +13,9 @@
                 <Blazorise.Icon Name="FontAwesomeIcons.SignInAlt" /> Sign in @Why
             </DropdownToggle>
             <DropdownMenu>
-                @foreach (var (name, displayName) in unusedAuthSchemas) {
-                    <DropdownItem Color="Color.Primary" Clicked="@(_ => ClientAuthHelper.SignIn(name))">
-                        With @displayName
-                    </DropdownItem>
-                }
+                <DropdownItem Color="Color.Primary">
+                        Sign in
+                </DropdownItem>
             </DropdownMenu>
         </Dropdown>
     </NotAuthorized>

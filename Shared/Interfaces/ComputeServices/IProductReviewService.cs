@@ -13,6 +13,9 @@ namespace Dipterv.Shared.Interfaces
         public Task<ProductReviewDto?> TryGet(int productReviewId, CancellationToken cancellationToken);
 
         [ComputeMethod]
+        public Task<List<ProductReviewDto>> TryGetMany(List<int> productReviewIdList, CancellationToken cancellationToken);
+
+        [ComputeMethod]
         public Task<List<int>> GetReviewIdsForProduct(int productId, CancellationToken cancellationToken);
 
         [CommandHandler]

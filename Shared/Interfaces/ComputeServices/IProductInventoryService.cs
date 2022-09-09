@@ -1,9 +1,6 @@
 ﻿using Dipterv.Shared.Dto.ProductInventory;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Dipterv.Shared.Interfaces.ComputeServices
 {
@@ -13,7 +10,10 @@ namespace Dipterv.Shared.Interfaces.ComputeServices
         public Task<int> ProductGetTotalStock(int productId, CancellationToken cancellationToken = default);
 
         [ComputeMethod]
-        public Task<List<ProductInventoryDto>> ProductGetInvetories(int productId, CancellationToken cancellationToken = default);
+        public Task<List<ProductInventoryDto>> GetInventoriesForProduct(int productId, CancellationToken cancellationToken = default);
+
+        [ComputeMethod]
+        public Task<List<ProductInventoryDto>> GetInventoriesForProductIdList(List<int> productIdList, CancellationToken cancellationToken = default);
 
         [CommandHandler]
         public Task AddProductInventory(AddProductInventoryCommand command, CancellationToken cancellationToken = default);

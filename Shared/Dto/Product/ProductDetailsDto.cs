@@ -1,16 +1,25 @@
-﻿using Dipterv.Shared.Dto.ProductInventory;
+﻿using Dipterv.Shared.Dto.Product;
+using Dipterv.Shared.Dto.ProductPhoto;
 using Dipterv.Shared.Dto.SpecialOffer;
-using System.Collections.Generic;
 
 namespace Dipterv.Shared.Dto
 {
-    public class ProductDetailsDto : ProductWithReviewsDto
+    public class ProductDetailsDto : ListProductDto
     {
-        public SpecialOfferDto SelectedSpecialOffer { get; set; } = null;
-        public int CurrentStock { get; set; } = 0;
-        public bool CanSendOrder { get; set; } = false;
-        public decimal OrderPrice { get; set; } = 0;
-        public bool CanWriteReview { get; set; } = false;
+        // Reviews
+        public List<ProductReviewDto> Reviews { get; set; } = new();
+        public ProductReviewDto? UserReview { get; set; } = default;
         public bool CanDeleteReview { get; set; } = false;
+        public bool CanWriteReview { get; set; } = false;
+
+        // SpecialOffer
+        public List<SpecialOfferDto> AvailableSpecialOffers { get; set; } = new();
+
+        // ShoppingCart
+        public decimal ItemTotal { get; set; } = 0;
+
+        // Images
+        public byte[] LargePhoto { get; set; } = new byte[0];
+        public List<ProductPhotoDto> Photos { get; set; } = new();
     }
 }

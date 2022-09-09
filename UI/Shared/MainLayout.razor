@@ -7,22 +7,21 @@
     var failures = CommandFailureList.Items;
 }
 
-<Layout Sider="true">
+<Layout Sider>
     <LayoutSider>
         <LayoutSiderContent>
             <LeftBar />
         </LayoutSiderContent>
     </LayoutSider>
     <Layout>
-        <LayoutHeader Fixed="true">
+        <LayoutHeader Fixed>
             <TopBar />
         </LayoutHeader>
-
         <LayoutContent Padding="Padding.Is4">
             @foreach (var failure in failures) {
-                <WhenCommandError Exception="failure.Result?.Error"
-                                  Dismissed="@(_ => CommandFailureList.Remove(failure.CommandId))" />
-            }
+                    <WhenCommandError Exception="failure.Result?.Error"
+                                      Dismissed="@(_ => CommandFailureList.Remove(failure.CommandId))" />
+                }
 
             @Body
         </LayoutContent>

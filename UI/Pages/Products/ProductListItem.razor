@@ -1,0 +1,171 @@
+﻿@using Dipterv.Shared.Dto.ProductCategory
+@using Dipterv.Shared.Dto.ShoppingCart
+@inject IShoppingCartDetailsService ShoppingCartDetailsService
+@inject Session Session
+
+<Card>
+    <CardImage Width="Width.Is25" Source="@ThumbnailUrl" Alt="Product thumbnail"></CardImage>
+    <CardBody>
+        <Alert Color="Color.Danger" Visible="!Product.CanBuyProduct">
+            <AlertDescription>We are no longer selling this product</AlertDescription>
+        </Alert>
+
+        <Alert Color="Color.Danger" Visible="Product.CanBuyProduct && Product.CurrentStock == 0">
+            <AlertDescription>This product is currently out of stock</AlertDescription>
+        </Alert>
+
+        <Alert Color="Color.Warning" Visible="Product.CanBuyProduct && Product.CurrentStock <= 3">
+            <AlertDescription>Buy fast! We only have @Product.CurrentStock left in stock </AlertDescription>
+        </Alert>
+
+        <Alert Color="Color.Success" Visible="Product.CanBuyProduct && Product.CurrentStock >= 3">
+            <AlertDescription>In stock, @Product.CurrentStock remaining </AlertDescription>
+        </Alert>
+            
+        <Alert Color="Color.Warning" Visible="Product.CanBuyProduct && Product.CurrentStock > 0 && Product.TotalQuantityInActiveShoppingCarts >= Product.CurrentStock">
+            <AlertDescription>Buy fast! A lot of people have this item in their cart, we might run out soon </AlertDescription>
+        </Alert> 
+
+        @if(CategoryName != null)
+        {
+            <Badge Color="Color.Primary">@CategoryName</Badge>
+        }
+        @if(SubcategoryName != null)
+        {
+            <Badge Color="Color.Secondary">@SubcategoryName</Badge>
+        }
+
+        <CardTitle Size="5">@Product.Name</CardTitle>
+        <CardSubtitle>@Product.ProductNumber</CardSubtitle>
+
+        <CardText>
+            @if (Product.BestAvailableSpecialOffer != null)
+            {
+                <Paragraph TextWeight="TextWeight.Bold" TextColor="TextColor.Success"> You are eligible for a @Product.BestAvailableSpecialOffer.DiscountPct% discount </Paragraph>
+                <Paragraph TextColor="TextColor.Muted"> Original price per item: @Product.ListPrice USD  </Paragraph>
+                <Paragraph TextColor="TextColor.Primary"> Discount price per item: @(Product.ListPrice * ((100 - @Product.BestAvailableSpecialOffer.DiscountPct) / 100)) USD </Paragraph>
+            }
+            else
+            {
+                <Paragraph> Price per item: @Product.ListPrice </Paragraph>
+            }
+
+            @if(!string.IsNullOrEmpty(Product.Size))
+            {
+                <Paragraph Margin="Margin.Is1.FromBottom">Size: @Product.Size </Paragraph>
+            }
+
+            @if(Product.NumberOfRatings > 0)
+            {
+                <Rating Color="Color.Success" SelectedValue="(int)Math.Round(Product.AverageRating.Value)" Disabled=true ReadOnly="true" />
+                <Paragraph Margin="Margin.Is1.FromBottom">Average rating: @Product.AverageRating (@Product.NumberOfRatings ratings) </Paragraph>
+            }
+            else
+            {
+                <Paragraph Margin="Margin.Is1.FromBottom">No ratings yet</Paragraph>
+            }
+        </CardText>
+
+        <Div>
+            <Button Color="Color.Primary" Type="ButtonType.Link" To="@ViewLink">View Details</Button>
+
+            @if(Product.IsInShoppingCart)
+            {
+                <Field>
+                    <FieldLabel>Select the quantity</FieldLabel>
+                    <NumericEdit Width="Width.Is25" TValue="int" Value="Product.QuantityInShoppingCart.Value" ValueChanged="UpdateOrderQuantity" Min="1" Step="1"/>
+                </Field>
+                <Button Color="Color.Danger" Clicked="@RemoveFromShoppingCart">Remove from shopping cart</Button>
+            }
+            else
+            {
+                <Button Color="Color.Success" Disabled="!Product.CanBuyProduct || Product.CurrentStock == 0" Clicked="@AddToShoppingCart">Add to shopping cart</Button>
+            }
+
+            @if(CanEdit)
+            {
+                <Button Color="Color.Secondary" Type="ButtonType.Link" To="@EditLink" Target="Target.Blank">Edit</Button>
+            }
+            @if(CanDelete)
+            {
+                <Button Color="Color.Danger" Clicked="OnDelete"> Delete </Button>
+            }
+       </Div>
+    </CardBody>    
+</Card>
+
+@code {
+
+    [Parameter]
+    public EventCallback<int> OnDeleteCallback { get; set; }
+
+    [Parameter]
+    public ListProductDto Product { get; set; }
+
+    [Parameter]
+    public List<ProductCategoryDto> Categories { get; set; }
+
+    [Parameter]
+    public bool CanEdit { get; set; } = false;
+
+    [Parameter]
+    public bool CanDelete { get; set; } = false;
+
+    public string ThumbnailUrl => string.Format("data:image/png;base64,{0}", Convert.ToBase64String(Product.ThumbnailImage));
+
+    public string ViewLink { get => $"product/{Product.ProductId}"; }
+
+    public string EditLink { get => $"product/{Product.ProductId}/edit"; }
+
+    public string CategoryName { get; set; }
+
+    public string SubcategoryName { get; set; }
+
+    public async Task OnDelete()
+    {
+        await OnDeleteCallback.InvokeAsync(Product.ProductId);
+    }
+
+    protected override void OnInitialized()
+    {
+        var category = Categories.FirstOrDefault(c => c.ProductCategoryId == Product.ProductCategoryId);
+        if(category != null)
+        {
+            CategoryName = category.Name;
+            var subcategory = category.Subcategories.FirstOrDefault(s => s.ProductSubcategoryId == Product.ProductSubcategoryId);
+            if(subcategory != null)
+            {
+                SubcategoryName = subcategory.Name;
+            }
+        }
+        
+    }
+
+    public void UpdateOrderQuantity(int quantity) =>
+        ShoppingCartDetailsService.UpdateProductQuantityInCart(new UpdateShoppingCartItemCommand
+            {
+                Quantity = quantity,
+                Session = Session,
+                CartItemId = Product.CustomerShoppingCartItemId.Value,
+                ProductId = Product.ProductId
+            });
+
+    public void AddToShoppingCart() =>
+        ShoppingCartDetailsService.AddProductToCart(
+            new AddShoppingCartItemCommand
+                {
+                    Session = Session,
+                    ProductId = Product.ProductId,
+                    Quantity = 1
+                });
+
+    public void RemoveFromShoppingCart() =>
+        ShoppingCartDetailsService.RemoveProductFromCart(
+            new RemoveShoppingCartItemCommand
+            {
+                Session = Session,
+                CartItemId = Product.CustomerShoppingCartItemId.Value,
+                ProductId = Product.ProductId,
+                Quantity = Product.QuantityInShoppingCart.Value
+            });
+}

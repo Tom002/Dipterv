@@ -33,7 +33,7 @@ namespace Dipterv.Bll.Services
         }
 
         [ComputeMethod]
-        public virtual async Task<List<ProductInventoryDto>> ProductGetInvetories(int productId, CancellationToken cancellationToken = default)
+        public virtual async Task<List<ProductInventoryDto>> GetInventoriesForProduct(int productId, CancellationToken cancellationToken = default)
         {
             using var dbContext = CreateDbContext(readWrite: true);
 
@@ -43,13 +43,26 @@ namespace Dipterv.Bll.Services
                 .ToListAsync();
         }
 
+        [ComputeMethod]
+        public virtual async Task<List<ProductInventoryDto>> GetInventoriesForProductIdList(List<int> productIdList, CancellationToken cancellationToken = default)
+        {
+            using var dbContext = CreateDbContext(readWrite: true);
+
+            var productInventories = await Task.WhenAll(productIdList.Select(async productId =>
+            {
+                return await GetInventoriesForProduct(productId, cancellationToken);
+            }));
+
+            return productInventories.SelectMany(pi => pi).ToList();
+        }
+
         [CommandHandler]
         public virtual async Task AddProductInventory(AddProductInventoryCommand command, CancellationToken cancellationToken = default)
         {
             if(Computed.IsInvalidating())
             {
                 _ = ProductGetTotalStock(command.ProductId, cancellationToken);
-                _ = ProductGetInvetories(command.ProductId, cancellationToken);
+                _ = GetInventoriesForProduct(command.ProductId, cancellationToken);
             }
 
             await using var dbContext = CreateDbContext(readWrite: true);
@@ -65,7 +78,7 @@ namespace Dipterv.Bll.Services
             if (Computed.IsInvalidating())
             {
                 _ = ProductGetTotalStock(command.ProductId, cancellationToken);
-                _ = ProductGetInvetories(command.ProductId, cancellationToken);
+                _ = GetInventoriesForProduct(command.ProductId, cancellationToken);
             }
 
             using var dbContext = CreateDbContext(readWrite: true);

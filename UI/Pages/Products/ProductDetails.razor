@@ -1,0 +1,259 @@
+﻿@page "/product/{Id:int}"
+@using AutoMapper
+@using Dipterv.Shared.Dto.ShoppingCart
+@using Templates.TodoApp.UI.Pages.Models
+@inherits ComputedStateComponent<ProductDetailsComputedState>
+@inject IProductReviewService ProductReviewService
+@inject IProductDetailsService ProductDetailsService
+@inject IProductService ProductService
+@inject Session Session
+@inject IAuth AuthService
+@inject IShoppingCartService ShoppingCartService
+@inject IShoppingCartDetailsService ShoppingCartDetailsService
+@inject IMapper Mapper
+
+@{
+    var state = State.ValueOrDefault ?? new ProductDetailsComputedState();
+    var error = State.Error;
+}
+
+<WhenException Exception="error" />
+
+
+<h3>Product details</h3>
+
+<Card>
+    <CardImage Width="Width.Is25" Source="@(string.Format("data:image/png;base64,{0}", Convert.ToBase64String(state.ProductDetails.LargePhoto)))" Alt="Product thumbnail"></CardImage>
+    <CardBody>
+        @if(CategoryName != null)
+        {
+            <Badge Color="Color.Primary">@CategoryName</Badge>
+        }
+        @if(SubcategoryName != null)
+        {
+            <Badge Color="Color.Secondary">@SubcategoryName</Badge>
+        }
+
+        <CardTitle Size="5">@state.ProductDetails.Name</CardTitle>
+        <CardSubtitle>@state.ProductDetails.ProductNumber</CardSubtitle>
+
+        <CardText>
+            @if (state.ProductDetails.BestAvailableSpecialOffer != null)
+            {
+                <Paragraph TextWeight="TextWeight.Bold" TextColor="TextColor.Success"> You are eligible for a @state.ProductDetails.BestAvailableSpecialOffer.DiscountPct% discount </Paragraph>
+                <Paragraph TextColor="TextColor.Muted"> Original price per item: @state.ProductDetails.ListPrice USD  </Paragraph>
+                <Paragraph TextColor="TextColor.Primary"> Discount price per item: @(state.ProductDetails.ListPrice * ((100 - @state.ProductDetails.BestAvailableSpecialOffer.DiscountPct) / 100)) USD </Paragraph>
+            }
+            else
+            {
+                <Paragraph> Price per item: @state.ProductDetails.ListPrice </Paragraph>
+            }
+
+            @if(!string.IsNullOrEmpty(state.ProductDetails.Size))
+            {
+                <Paragraph Margin="Margin.Is1.FromBottom">Size: @state.ProductDetails.Size </Paragraph>
+            }
+
+            @if(state.ProductDetails.NumberOfRatings > 0)
+            {
+                <Rating Color="Color.Success" SelectedValue="(int)Math.Round(state.ProductDetails.AverageRating.Value)" Disabled=true ReadOnly="true" />
+                <Paragraph Margin="Margin.Is1.FromBottom">Average rating: @state.ProductDetails.AverageRating (@state.ProductDetails.NumberOfRatings ratings) </Paragraph>
+            }
+            else
+            {
+                <Paragraph Margin="Margin.Is1.FromBottom">No ratings yet</Paragraph>
+            }
+        </CardText>
+    </CardBody>    
+</Card>
+
+@if(state.ProductDetails.UserReview != null)
+{
+    <br />
+    <h3>Your review</h3>
+
+    <ListGroup>
+        <ListGroupItem>
+                    <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100">
+                        <Heading Size="HeadingSize.Is5" Margin="Margin.Is1.FromBottom">@state.ProductDetails.UserReview.ReviewerName</Heading>
+                        <Small>@state.ProductDetails.UserReview.ReviewDate.ToShortDateString()</Small>
+                    </Div>
+                    <Paragraph Margin="Margin.Is1.FromBottom">@state.ProductDetails.UserReview.Comments</Paragraph>
+                    <Rating SelectedValue="@state.ProductDetails.UserReview.Rating" MaxValue="5" />
+
+                    <Button Color="Color.Danger" @onclick="() => DeleteReview(state.ProductDetails.UserReview.ProductReviewId)">Delete</Button>
+                </ListGroupItem>
+    </ListGroup>
+}
+
+@if (state.ProductDetails.Reviews.Any())
+{
+    <br />
+    <h3>Reviews</h3>
+
+    <ListGroup>
+        @{
+            foreach (var review in state.ProductDetails.Reviews)
+            {
+                <ListGroupItem>
+                    <Div Flex="Flex.JustifyContent.Between" Width="Width.Is100">
+                        <Heading Size="HeadingSize.Is5" Margin="Margin.Is1.FromBottom">@review.ReviewerName</Heading>
+                        <Small>@review.ReviewDate.ToShortDateString()</Small>
+                    </Div>
+                    <Paragraph Margin="Margin.Is1.FromBottom">@review.Comments</Paragraph>
+                    <Rating SelectedValue="@review.Rating" MaxValue="5" />
+                </ListGroupItem>
+            }
+        }
+    </ListGroup>
+}
+
+@if(state.ProductDetails.CanWriteReview)
+{
+    <br />
+    <h3>Add review</h3>
+    <Field>
+        <FieldLabel>Review</FieldLabel>
+        <TextEdit Size="Size.Large" Placeholder="Enter your review" @bind-Text="Review.Comments" />
+    </Field>
+    <Field>
+        <FieldLabel>Rating</FieldLabel>
+        <Rating @bind-SelectedValue="@Review.Rating" MaxValue="5" />
+    </Field>
+    <Field>
+        <Button Color="Color.Primary" Clicked="@AddReview">Add review</Button>
+    </Field>
+}
+
+<h3>Buy product</h3>
+
+    <Alert Color="Color.Danger" Visible="!state.ProductDetails.CanBuyProduct">
+        <AlertDescription>We are no longer selling this product</AlertDescription>
+    </Alert>
+
+    <Alert Color="Color.Danger" Visible="state.ProductDetails.CanBuyProduct && state.ProductDetails.CurrentStock == 0">
+        <AlertDescription>This product is currently out of stock</AlertDescription>
+    </Alert>
+
+     <Alert Color="Color.Success" Visible="state.ProductDetails.CanBuyProduct && state.ProductDetails.CurrentStock > 0">
+        <AlertDescription>In stock, @state.ProductDetails.CurrentStock remaining </AlertDescription>
+     </Alert>
+
+    @if(state.ProductDetails.IsInShoppingCart)
+    {
+        <Field>
+            <FieldLabel>Select the quantity</FieldLabel>
+             <NumericEdit Width="Width.Is25" TValue="int?" Value="state.ProductDetails.QuantityInShoppingCart.Value" ValueChanged="UpdateOrderQuantity" Min="0" Step="1"/>
+        </Field>
+        <Heading Size="HeadingSize.Is4" TextColor="TextColor.Primary"> Total cost: @state.ProductDetails.ItemTotal USD</Heading>
+        <Button Color="Color.Danger" Clicked="@RemoveFromShoppingCart">Remove from shopping cart</Button>    
+    }
+    else
+    {
+        <Button Color="Color.Success" Disabled="!state.ProductDetails.CanBuyProduct || state.ProductDetails.CurrentStock == 0" Clicked="@AddToShoppingCart">Add to shopping cart</Button>
+    }
+
+@code {
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+
+    public string ThumbnailUrl { get; set; }
+
+    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
+
+    private User User => AuthState.User;
+
+    private DateTime LastStateUpdateTime { get; set; } = DateTime.UtcNow;
+
+    public string CategoryName { get; set; }
+
+    public string SubcategoryName { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        AuthState = await AuthStateTask;
+    }
+
+    [Parameter]
+    public int Id { get; set; }
+
+    public short OrderQuantity { get; set; } = 0;
+
+    public ProductReviewDto Review { get; set; } = new ProductReviewDto();
+
+
+    public void UpdateOrderQuantity(int? orderQuantity)
+    {
+        if(State.HasValue && State.Value.ProductDetails.CustomerShoppingCartItemId.HasValue && orderQuantity.HasValue)
+        {
+            ShoppingCartDetailsService.UpdateProductQuantityInCart(new UpdateShoppingCartItemCommand
+            {
+                Quantity = orderQuantity.Value,
+                Session = Session,
+                CartItemId = State.Value.ProductDetails.CustomerShoppingCartItemId.Value,
+                ProductId = State.Value.ProductDetails.ProductId,
+            });
+        }
+    }
+
+    
+
+    protected override async Task<ProductDetailsComputedState> ComputeState(CancellationToken cancellationToken)
+    {
+        LastStateUpdateTime = DateTime.Now;
+        var details = await ProductDetailsService.TryGetWithDetails(Session, Id, cancellationToken);
+        var categories = await ProductService.GetCategories(cancellationToken);
+
+        return new ProductDetailsComputedState { ProductCategories = categories, ProductDetails = details };
+    }
+
+    public async Task AddReview()
+    {
+        var user = await AuthService.GetUser(Session);
+
+        await ProductReviewService.Add(
+            new AddProductReviewCommand
+            {
+                ProductId = Id,
+                Comments = Review.Comments,
+                EmailAddress = user.Name,
+                Rating = Review.Rating,
+                ReviewerName = user.Name
+            }, CancellationToken.None);
+    }
+
+    public async Task AddToShoppingCart()
+    {
+        await ShoppingCartDetailsService.AddProductToCart(
+            new AddShoppingCartItemCommand
+            {
+                Session = Session,
+                ProductId = Id,
+                Quantity = 1
+            });
+    }
+
+    public async Task RemoveFromShoppingCart()
+    {
+        if(State.HasValue && State.Value.ProductDetails.CustomerShoppingCartItemId.HasValue)
+        {
+            await ShoppingCartDetailsService.RemoveProductFromCart(
+            new RemoveShoppingCartItemCommand
+                {
+                    Session = Session,
+                    CartItemId = State.Value.ProductDetails.CustomerShoppingCartItemId.Value,
+                    ProductId = State.Value.ProductDetails.ProductId,
+                    Quantity = State.Value.ProductDetails.QuantityInShoppingCart.Value
+                });
+        }
+    }
+
+    public Task DeleteReview(int productReviewId)
+        => ProductReviewService.Delete(
+            new DeleteProductReviewCommand 
+            { 
+                Session = Session,
+                ProductId = Id,
+                ProductReviewId = productReviewId
+            }, CancellationToken.None);
+}

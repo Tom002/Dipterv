@@ -19,5 +19,6 @@ namespace Dipterv.Shared.Dto.SpecialOffer
         public int MinQty { get; set; }
         public int? MaxQty { get; set; }
         public DateTime ModifiedDate { get; set; }
+        public List<int> ValidForProductIds { get; set; } = new();
     }
 }

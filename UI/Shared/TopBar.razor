@@ -4,19 +4,35 @@
     Background="Background.Light"
     ThemeContrast="ThemeContrast.Light">
     <BarBrand>
-        <BarItem>
-            <BarLink Title="Home" To="/" Match="@Match.All" Class="link-unstyled">TodoApp: Fusion+Blazor Template</BarLink>
-        </BarItem>
+        Reactive shop
     </BarBrand>
+
     <BarMenu>
+        <BarStart>
+            @Item(FontAwesomeIcons.User, "Authentication", "authentication")
+            @Item(FontAwesomeIcons.Search, "Search products", "products")
+            @Item(FontAwesomeIcons.ShoppingBasket, "My shopping cart", "shoppingCart")
+        </BarStart>
+
         <BarEnd>
             <BarBackendStatus/>
             <BarItem>
                 <BarAccount/>
             </BarItem>
-            <BarItem>
-                <BarBlazorMode/>
-            </BarItem>
+
         </BarEnd>
     </BarMenu>
 </Bar>
+
+@code {
+    private RenderFragment Item(object icon, string title, string href, Match match = Match.All)
+    {
+        var target = href.StartsWith("http://") || href.StartsWith("https://") ? Target.Blank : Target.Default;
+        return
+            @<BarItem>
+                <BarLink Title="@title" To="@href" Target="@target" Match="@match">
+                    <BarIcon IconName="@icon"></BarIcon> @title
+                </BarLink>
+            </BarItem>;
+    }
+}

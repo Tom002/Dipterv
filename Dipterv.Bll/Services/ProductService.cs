@@ -1,13 +1,22 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Dipterv.Bll.Extensions;
+using Dipterv.Bll.Helper;
 using Dipterv.Dal.DbContext;
 using Dipterv.Dal.Model;
 using Dipterv.Shared.Dto;
+using Dipterv.Shared.Dto.Product;
+using Dipterv.Shared.Dto.ProductCategory;
+using Dipterv.Shared.Dto.ProductPhoto;
+using Dipterv.Shared.Helper;
 using Dipterv.Shared.Interfaces;
 using Dipterv.Shared.Interfaces.ComputeServices;
+using Dipterv.Shared.Paging;
 using Microsoft.EntityFrameworkCore;
 using Stl.Async;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
+using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using System.Reactive;
 
@@ -17,59 +26,80 @@ namespace Dipterv.Bll.Services
     {
         private readonly IMapper _mapper;
         private readonly IDbEntityResolver<int, Product> _productResolver;
-        private readonly IProductReviewService _productReviewService;
+        private readonly IDbEntityResolver<int, ProductPhoto> _productPhotoResolver;
         private readonly IDateService _dateService;
+        private readonly IAuth _authService;
 
         public ProductService(
             IServiceProvider services,
             IMapper mapper,
             IDbEntityResolver<int, Product> productResolver,
-            IProductReviewService productReviewService,
-            IDateService dateService)
+            IDbEntityResolver<int, ProductPhoto> productPhotoResolver,
+            IDateService dateService,
+            IAuth authService)
             : base(services)
         {
             _mapper = mapper;
             _productResolver = productResolver;
-            _productReviewService = productReviewService;
+            _productPhotoResolver = productPhotoResolver;
             _dateService = dateService;
+            _authService = authService;
         }
 
         [ComputeMethod]
-        public virtual async Task<ProductDto?> TryGet(int productId, CancellationToken cancellationToken)
+        public virtual async Task<ProductDto?> TryGetProduct(int productId, CancellationToken cancellationToken)
         {
-            await using var dbContext = CreateDbContext();
-            var currentDate = await _dateService.GetCurrentDate();
-
             var product = await _productResolver.Get(productId, cancellationToken);
             if (product is Product)
             {
-                var productDto = _mapper.Map<ProductDto>(product);
-                productDto.CanBuyProduct = product.SellStartDate <= currentDate && (!product.SellEndDate.HasValue || product.SellEndDate.Value > currentDate);
-                return productDto;
+                return _mapper.Map<ProductDto>(product);
             }
+            
             return default;
         }
 
         [ComputeMethod]
-        public virtual async Task<ProductWithReviewsDto?> TryGetWithReviews(int productId, CancellationToken cancellationToken)
+        public virtual async Task<List<ProductDto?>> TryGetManyProducts(List<int> productIdList, CancellationToken cancellationToken)
         {
-            ProductDto product = await TryGet(productId, cancellationToken);
-            if (product is ProductDto)
+            var products = await Task.WhenAll(productIdList.Select(async productId =>
             {
-                var productReviewIds = await _productReviewService.GetReviewIdsForProduct(productId, cancellationToken);
+                return await TryGetProduct(productId, cancellationToken);
+            }));
+            return products.ToList();
+        }
 
-                var reviews = await Task.WhenAll(productReviewIds.Select(async reviewId =>
-                {
-                    return await _productReviewService.TryGet(reviewId, cancellationToken);
-                }));
-
-                var productWithReviews = _mapper.Map<ProductDto, ProductWithReviewsDto>(product);
-                productWithReviews.Reviews = reviews.ToList();
-
-                return productWithReviews;
+        [ComputeMethod]
+        public virtual async Task<ProductPhotoDto?> TryGetProductPhoto(int productPhotoId, CancellationToken cancellationToken)
+        {
+            var productPhoto = await _productPhotoResolver.Get(productPhotoId, cancellationToken);
+            if (productPhoto is ProductPhoto)
+            {
+                return _mapper.Map<ProductPhotoDto>(productPhoto);
             }
+
             return default;
         }
+
+        [ComputeMethod]
+        public virtual async Task<List<ProductPhotoDto?>> TryGetManyProductPhotos(List<int> productPhotoIdList, CancellationToken cancellationToken)
+        {
+            var productPhotos = await Task.WhenAll(productPhotoIdList.Select(async productPhotoId =>
+            {
+                return await TryGetProductPhoto(productPhotoId, cancellationToken);
+            }));
+            return productPhotos.ToList();
+        }
+
+        [ComputeMethod]
+        public virtual async Task<List<ProductCategoryDto>> GetCategories(CancellationToken cancellationToken)
+        {
+            await using var dbContext = CreateDbContext();
+
+            return await dbContext.ProductCategories
+                .ProjectTo<ProductCategoryDto>(_mapper.ConfigurationProvider)
+                .ToListAsync();
+        }
+
 
         [ComputeMethod]
         public virtual async Task<List<ProductDto>> GetAll(string searchTerm, CancellationToken cancellationToken)
@@ -80,7 +110,7 @@ namespace Dipterv.Bll.Services
 
             var products = await Task.WhenAll(productIdList.Select(async productId =>
             {
-                return await TryGet(productId, cancellationToken);
+                return await TryGetProduct(productId, cancellationToken);
             }));
 
             return products.ToList();
@@ -104,7 +134,7 @@ namespace Dipterv.Bll.Services
         {
             if (Computed.IsInvalidating())
             {
-                _ = TryGet(command.ProductId, cancellationToken);
+                _ = TryGetProduct(command.ProductId, cancellationToken);
                 return;
             }
 
@@ -137,7 +167,7 @@ namespace Dipterv.Bll.Services
         {
             if (Computed.IsInvalidating())
             {
-                _ = TryGet(command.ProductId, cancellationToken);
+                _ = TryGetProduct(command.ProductId, cancellationToken);
                 _ = PseudoGetAllAnySearchTerm();
 
                 // TODO: Invalidate removed reviews

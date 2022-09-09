@@ -1,0 +1,37 @@
+﻿@page "/login"
+@using Dipterv.Shared.Dto.SignIn
+@inject IAccountService AccountService
+@inject Session Session
+
+<h3>Sign in</h3>
+
+<Field>
+    <FieldLabel>Email address</FieldLabel>
+    <TextEdit @bind-Text="@Email" Role="TextRole.Email" />
+</Field>
+<Field>
+    <FieldLabel>Password</FieldLabel>
+    <TextEdit @bind-Text="@Password" Role="TextRole.Password" />
+</Field>
+
+<Button Color="Color.Secondary" Clicked="SignIn">Login</Button>
+<Button Clicked="Logout">Logout</Button>
+
+@code {
+
+    public string Email { get; set; }
+    public string Password { get; set; }
+
+    public async Task SignIn()
+    {
+        await AccountService.SignIn(
+            Session,
+            new EmailPasswordDto { Email = Email, Password = Password },
+            CancellationToken.None);
+    }
+
+    public async Task Logout()
+    {
+        await AccountService.SignOut(Session);
+    }
+}

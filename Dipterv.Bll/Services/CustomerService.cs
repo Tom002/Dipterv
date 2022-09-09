@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Dipterv.Dal.DbContext;
+using Dipterv.Dal.Model;
 using Dipterv.Shared.Dto.Customer;
+using Dipterv.Shared.Exceptions;
 using Dipterv.Shared.Interfaces.ComputeServices;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -11,6 +13,7 @@ namespace Dipterv.Bll.Services
     public class CustomerService : DbServiceBase<FusionDbContext>, ICustomerService
     {
         private readonly IMapper _mapper;
+        private readonly IDbEntityResolver<int, Customer> _customerResolver;
 
         public CustomerService(
             IServiceProvider services,
@@ -34,7 +37,7 @@ namespace Dipterv.Bll.Services
                 return customer;
             }
 
-            throw new System.Exception("Customer not found");
+            throw new BusinessException("Customer not found");
         }
     }
 }

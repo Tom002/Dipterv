@@ -4,13 +4,12 @@ using Dipterv.Shared.Dto;
 using Dipterv.Shared.Dto.Customer;
 using Dipterv.Shared.Dto.Location;
 using Dipterv.Shared.Dto.Order;
+using Dipterv.Shared.Dto.Product;
+using Dipterv.Shared.Dto.ProductCategory;
 using Dipterv.Shared.Dto.ProductInventory;
+using Dipterv.Shared.Dto.ProductPhoto;
+using Dipterv.Shared.Dto.ShoppingCart;
 using Dipterv.Shared.Dto.SpecialOffer;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Dipterv.Bll.Mappings
 {
@@ -24,11 +23,11 @@ namespace Dipterv.Bll.Mappings
                 .ForMember(dest => dest.SellStartDate, opt => opt.MapFrom(_ => DateTime.Now))
                 .ForMember(dest => dest.ModifiedDate, opt => opt.MapFrom(_ => DateTime.Now));
 
-            CreateMap<Product, ProductDto>();
-            //.ForMember(dest => dest.LocationIds, opt => opt.MapFrom(src => src.ProductInventories.Select(p => p.LocationId).ToHashSet()))
-            //.ForMember(dest => dest.ProductReviewIds, opt => opt.MapFrom(src => src.ProductReviews.Select(p => p.ProductReviewId).ToHashSet()));
+            CreateMap<ProductDto, ProductDetailsDto>();
 
-            CreateMap<ProductDto, ProductWithReviewsDto>();
+            CreateMap<ProductDto, ListProductDto>();
+
+            CreateMap<ProductDto, ProductWithSpecialOffersDto>();
 
             CreateMap<UpdateProductCommand, Product>();
 
@@ -38,11 +37,10 @@ namespace Dipterv.Bll.Mappings
 
             CreateMap<ProductReview, ProductReviewDto>();
 
-            CreateMap<SpecialOffer, SpecialOfferDto>();
+            CreateMap<SpecialOffer, SpecialOfferDto>()
+                .ForMember(dest => dest.ValidForProductIds, opt => opt.MapFrom(src => src.SpecialOfferProducts.Select(sop => sop.ProductId).ToList()));
 
             CreateMap<AddSpecialOfferCommand, SpecialOffer>();
-
-            CreateMap<ProductInventory, ProductInventoryDto>();
 
             CreateMap<AddProductInventoryCommand, ProductInventory>()
                 .ForMember(dest => dest.ModifiedDate, opt => opt.MapFrom(_ => DateTime.Now));
@@ -57,6 +55,32 @@ namespace Dipterv.Bll.Mappings
             CreateMap<Customer, CustomerDto>();
 
             CreateMap<SalesOrderHeader, OrderHeaderDto>();
+
+            CreateMap<ShoppingCartItem, ShoppingCartItemDto>();
+
+
+            CreateMap<ShoppingCartItemDto, ShoppingCartItemDetailsDto>();
+
+
+            CreateMap<Product, ProductDto>()
+                .ForMember(dest => dest.ProductPhotoIds, opt => opt.MapFrom(src => src.ProductProductPhotos.Select(ppp => ppp.ProductPhotoId).ToList()))
+                .ForMember(dest => dest.PrimaryProductPhotoId, opt => opt.MapFrom(src =>
+                    src.ProductProductPhotos.FirstOrDefault(p => p.Primary) != null 
+                        ? (int?) src.ProductProductPhotos.FirstOrDefault(p => p.Primary).ProductPhotoId
+                        : null)
+                    )
+                .ForMember(dest => dest.ProductReviewIds, opt => opt.MapFrom(src => src.ProductReviews.Select(pr => pr.ProductReviewId).ToList()))
+                .ForMember(dest => dest.ShoppingCartItemIds, opt => opt.MapFrom(src => src.ShoppingCartItems.Select(sci => sci.ShoppingCartItemId).ToList()))
+                .ForMember(dest => dest.SpecialOfferIds, opt => opt.MapFrom(src => src.SpecialOfferProducts.Select(sop => sop.SpecialOfferId).ToList()))
+                .ForMember(dest => dest.ProductCategoryId, opt => opt.MapFrom(src => src.ProductSubcategoryId.HasValue ? (int?) src.ProductSubcategory.ProductCategoryId : null))
+                .ForMember(dest => dest.ProductSubcategoryId, opt => opt.MapFrom(src => src.ProductSubcategoryId));
+
+            CreateMap<ProductPhoto, ProductPhotoDto>();
+
+            CreateMap<ProductCategory, ProductCategoryDto>()
+                .ForMember(dest => dest.Subcategories, opt => opt.MapFrom(src => src.ProductSubcategories));
+
+            CreateMap<ProductSubcategory, ProductSubcategoryDto>();
         }
     }
 }

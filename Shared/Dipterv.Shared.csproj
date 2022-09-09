@@ -11,10 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Dto\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Stl.Fusion.Client" Version="2.3.23" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="11.0.0" />
+    <PackageReference Include="Stl.Fusion.Client" Version="2.4.15" />
   </ItemGroup>
 </Project>

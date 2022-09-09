@@ -1,0 +1,83 @@
+﻿@page "/shoppingCart"
+@using Dipterv.Shared.Dto.ShoppingCart
+@using Templates.TodoApp.UI.Pages.Models
+@using AutoMapper
+@inject IShoppingCartService ShoppingCartService
+@inject IShoppingCartDetailsService ShoppingCartDetailsService 
+@inject Session Session
+@inject IMapper Mapper
+@inherits             ComputedStateComponent<ShoppingCartDto>
+
+@{
+    var state = State.ValueOrDefault ?? new ShoppingCartDto();
+    var error = State.Error;
+}
+
+<h3>MyShoppingCart</h3>
+
+<StateOfStateBadge State="@State" />
+<WhenException Exception="error" />
+<Div Margin="Margin.Is1.OnY">
+    Updated: <b><MomentsAgoBadge Value="LastStateUpdateTime" /></b>
+</Div>
+<Div Margin="Margin.Is1.OnY">
+    Call:
+    <Button Color="Color.Danger" Size="Size.Small" Clicked="_ => StateHasChanged()">StateHasChanged()</Button>
+    <Button Color="Color.Danger" Size="Size.Small" Clicked="_ => State.Invalidate()">State.Invalidate()</Button>
+    <Button Color="Color.Danger" Size="Size.Small" Clicked="_ => State.Recompute()">State.Recompute()</Button>
+</Div>
+
+<ListGroup Flush="true">
+    @foreach (var cartItem in state.ShoppingCartItems)
+    {
+        <ListGroupItem>
+            <Heading Size="HeadingSize.Is5" Margin="Margin.Is1.FromBottom">@cartItem.Product.Name</Heading>
+            <NumericEdit Width="Width.Is25" TValue="int" Value="cartItem.Quantity" ValueChanged="(value) => UpdateOrderQuantity(value, cartItem.ShoppingCartItemId, cartItem.ProductId)" Min="0" Step="1"/>
+            @if(cartItem.Product.BestAvailableSpecialOffer != null)
+            {
+                <Badge Color="Color.Success">Discount</Badge>
+                <Paragraph TextColor="TextColor.Success"> You are eligible for a @cartItem.Product.BestAvailableSpecialOffer.DiscountPct % discount </Paragraph>
+                <Paragraph TextColor="TextColor.Muted"> Original price: @cartItem.Product.OriginalPrice USD per item </Paragraph>
+            }
+            <Paragraph TextColor="TextColor.Primary">Item total: @(cartItem.Product.ListPrice * cartItem.Product.QuantityInShoppingCart.Value) USD </Paragraph>
+
+            <Alert Color="Color.Danger" Visible="cartItem.Quantity > cartItem.Product.CurrentStock">
+                <AlertMessage>
+                    We no longer have the selected quantity in stock, please lower the amount
+                </AlertMessage>
+            </Alert>
+
+            <Alert Color="Color.Danger" Visible="!cartItem.Product.CanBuyProduct">
+                <AlertMessage>
+                    We no longer sell this product, please remove it from your cart
+                </AlertMessage>
+            </Alert>
+        </ListGroupItem>
+    }
+
+    @if(state.CanSendOrder)
+    {
+        <Button Color="Color.Primary"> Send order </Button>
+    }
+    else
+    {
+        <Paragraph TextColor="TextColor.Danger">You can't curently send this order</Paragraph>
+    }
+</ListGroup>
+
+@code {
+
+    private DateTime LastStateUpdateTime { get; set; } = DateTime.Now;
+
+    public void UpdateOrderQuantity(int quantity, int shoppingCartItemId, int productId) =>
+        ShoppingCartDetailsService.UpdateProductQuantityInCart(new UpdateShoppingCartItemCommand
+            {
+                Quantity = quantity,
+                Session = Session,
+                CartItemId = shoppingCartItemId,
+                ProductId = productId,
+            });
+
+    protected override Task<ShoppingCartDto> ComputeState(CancellationToken cancellationToken)
+        => ShoppingCartDetailsService.GetShoppingCartForCustomer(Session, cancellationToken);
+}

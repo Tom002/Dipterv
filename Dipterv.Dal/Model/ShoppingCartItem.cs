@@ -26,7 +26,8 @@ namespace Dipterv.Dal.Model
         public DateTime DateCreated { get; set; }
         [Column(TypeName = "datetime")]
         public DateTime ModifiedDate { get; set; }
-
+        [Required]
+        public int ReservedQuantity { get; set; }
         [ForeignKey(nameof(ProductId))]
         [InverseProperty("ShoppingCartItems")]
         public virtual Product Product { get; set; }

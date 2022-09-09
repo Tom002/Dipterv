@@ -17,7 +17,6 @@ using Stl.Fusion.Server;
 using Stl.Fusion.Server.Controllers;
 using Stl.Fusion.Server.Authentication;
 using Stl.Fusion.Blazor;
-using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Templates.TodoApp.UI;
 using Dipterv.Shared.Interfaces;
 using Dipterv.Bll.Services;
@@ -29,6 +28,13 @@ using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Dipterv.Bll.Mappings;
+using Microsoft.OpenApi.Models;
+using Templates.TodoApp.Host.HostedService;
+using Dipterv.Shared.Extensions;
+using Dipterv.Shared.Automapper;
+using System.Collections.Generic;
+using System.Linq;
+using Dipterv.Bll.Interfaces;
 
 namespace Templates.TodoApp.Host;
 
@@ -45,15 +51,13 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        
+        services.AddHostedService<ProductKafkaConsumerService>();
+        services.AddHostedService<ProductInventoryKafkaConsumerService>();
+
         services.AddSettings<HostSettings>();
-#pragma warning disable ASP0000
+        #pragma warning disable ASP0000
         HostSettings = services.BuildServiceProvider().GetRequiredService<HostSettings>();
-#pragma warning restore ASP0000
-
-
-
-
+        #pragma warning restore ASP0000
 
         // Fusion services
         services.AddSingleton(new Publisher.Options() { Id = HostSettings.PublisherId });
@@ -63,7 +67,7 @@ public class Startup
         var fusionAuth = fusion.AddAuthentication().AddServer(
             signInControllerSettingsFactory: _ => SignInController.DefaultSettings with
             {
-                DefaultScheme = MicrosoftAccountDefaults.AuthenticationScheme,
+                DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme,
                 SignInPropertiesBuilder = (_, properties) =>
                 {
                     properties.IsPersistent = true;
@@ -72,7 +76,8 @@ public class Startup
             serverAuthHelperSettingsFactory: _ => ServerAuthHelper.DefaultSettings with
             {
                 NameClaimKeys = Array.Empty<string>(),
-            });
+            })
+        .AddAuthBackend<DbAuthService<FusionDbContext>>();
 
         fusion.AddComputeService<IProductService, ProductService>();
         fusion.AddComputeService<IProductReviewService, ProductReviewService>();
@@ -81,6 +86,10 @@ public class Startup
         fusion.AddComputeService<ISpecialOfferService, SpecialOfferService>();
         fusion.AddComputeService<ICustomerService, CustomerService>();
         fusion.AddComputeService<IOrderService, OrderService>();
+        fusion.AddComputeService<IShoppingCartService, ShoppingCartService>();
+        fusion.AddComputeService<IShoppingCartDetailsService, ShoppingCartDetailsService>();
+        fusion.AddComputeService<IProductDetailsService, ProductDetailsService>();
+        fusion.AddComputeService<IProductSearchService, ProductSearchService>();
 
         services.AddScoped<IAccountService, AccountService>();
 
@@ -99,16 +108,42 @@ public class Startup
             dbContext.EnableSensitiveDataLogging();
         });
 
-        services.AddScoped<FusionDbContext>(p => p.GetRequiredService<IDbContextFactory<FusionDbContext>>().CreateDbContext());
+        services.AddScoped(p => p.GetRequiredService<IDbContextFactory<FusionDbContext>>().CreateDbContext());
+        services.AddSingleton<ICommandInvalidationHelperService, CommandInvalidationHelperService>();
 
         services.AddDbContextServices<FusionDbContext>(dbContext =>
         {
-            dbContext.AddEntityResolver<int, Product>();
+            dbContext.AddEntityResolver<int, Product>((serviceProvider, options) => {
+                options.QueryTransformer = products => products
+                    .Include(p => p.ProductSubcategory)
+                    .Include(p => p.ProductReviews)
+                    .Include(p => p.SpecialOfferProducts)
+                    .Include(p => p.ShoppingCartItems)
+                    .Include(p => p.ProductModel)
+                    .Include(p => p.ProductProductPhotos).ThenInclude(pp => pp.ProductPhoto);
+            });
+
+            dbContext.AddEntityResolver<int, ProductSubcategory>();
+
+            dbContext.AddEntityResolver<int, SpecialOffer>((serviceProvider, options) => {
+                options.QueryTransformer = specialOffers => specialOffers
+                    .Include(p => p.SpecialOfferProducts);
+            });
+
             dbContext.AddEntityResolver<int, ProductInventory>();
             dbContext.AddEntityResolver<int, ProductReview>();
             dbContext.AddEntityResolver<int, Location>();
             dbContext.AddEntityResolver<int, WorkOrder>();
-            dbContext.AddEntityResolver<int, SpecialOffer>();
+            dbContext.AddEntityResolver<int, ShoppingCartItem>();
+
+            dbContext.AddEntityResolver<int, ProductPhoto>((serviceProvider, options) => {
+                options.QueryTransformer = photo => photo
+                    .Include(p => p.ProductProductPhotos);
+            });
+
+            dbContext.AddEntityResolver<string, ShoppingCartItem>((serviceProvider, options) => {
+                options.KeyPropertyName = nameof(ShoppingCartItem.ShoppingCartId);
+            });
 
             dbContext.AddOperations((_, o) => {
                 o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(1);
@@ -117,7 +152,12 @@ public class Startup
             dbContext.AddAuthentication<DbSessionInfo<long>, DbUser<long>, long>();
         });
 
-        services.AddAutoMapper(typeof(MappingProfile));
+        services.AddAutoMapper();
+
+        services.ConfigureProfile(() =>
+        {
+            return new MappingProfile();
+        });
 
 
         // Shared services
@@ -127,6 +167,10 @@ public class Startup
         services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            options.DefaultSignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
         }).AddCookie(options =>
         {
             options.LoginPath = "/signIn";
@@ -149,12 +193,20 @@ public class Startup
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => o.DetailedErrors = true);
         fusionAuth.AddBlazor(o => { }); // Must follow services.AddServerSideBlazor()!
+
+        services.AddSwaggerGen(c => {
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "Templates.TodoApp API",
+                Version = "v1"
+            });
+        });
+
+        
     }
 
     public void Configure(IApplicationBuilder app, ILogger<Startup> log)
     {
-
-
         if (Env.IsDevelopment()) {
             app.UseDeveloperExceptionPage();
             app.UseWebAssemblyDebugging();
@@ -173,13 +225,16 @@ public class Startup
         // Static + Swagger
         app.UseBlazorFrameworkFiles();
         app.UseStaticFiles();
+        app.UseSwagger();
+        app.UseSwaggerUI(c => {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
+        });
 
         // API controllers
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseEndpoints(endpoints => {
-            endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
             endpoints.MapControllers();
             endpoints.MapFallbackToPage("/_Host");

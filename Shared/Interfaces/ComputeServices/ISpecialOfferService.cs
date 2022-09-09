@@ -18,6 +18,9 @@ namespace Dipterv.Shared.Interfaces.ComputeServices
         [ComputeMethod]
         public Task<SpecialOfferDto?> TryGet(int specialOfferId, CancellationToken cancellationToken = default);
 
+        [ComputeMethod]
+        public Task<List<SpecialOfferDto>> TryGetMany(List<int> specialOfferIdList, CancellationToken cancellationToken = default);
+
         [CommandHandler]
         public Task Edit(UpdateSpecialOfferCommand command, CancellationToken cancellationToken = default);
 

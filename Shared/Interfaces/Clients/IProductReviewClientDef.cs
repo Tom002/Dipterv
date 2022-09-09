@@ -23,5 +23,8 @@ namespace Dipterv.Shared.Interfaces.Clients
 
         [Delete("delete")]
         public Task Delete([Body] DeleteProductReviewCommand command, CancellationToken cancellationToken = default);
+
+        [Post("tryGetMany")]
+        public Task<List<ProductReviewDto>>? TryGetMany(List<int> productReviewIdList, CancellationToken cancellationToken);
     }
 }
